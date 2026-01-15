@@ -88,7 +88,7 @@ function scheduleAt(serverTs, fn) {
 
 | Action | Delay (ms) | Reason |
 |--------|------------|--------|
-| `play` | 1500 | Longer to allow buffering sync |
+| `play` | 1000 | Allow buffering sync (reduced from 1500ms) |
 | `pause` | 300 | Shorter, no buffering needed |
 | `seek` | 300 | Shorter, direct position |
 
@@ -147,16 +147,18 @@ function syncLoop() {
     }
 
     // Excessive drift: forced seek
-    if (absDrift >= DRIFT_SOFT_MAX_SEC) {  // 2.5s
+    if (absDrift >= DRIFT_SOFT_MAX_SEC) {  // 2.0s
         video.currentTime = expected;
         video.playbackRate = 1;
         return;
     }
 
-    // Soft correction zone: speed adjustment
+    // Soft correction zone: progressive sqrt-based speed adjustment
     // drift > 0 = behind = speed up
     // drift < 0 = ahead = slow down
-    const rate = clamp(1 + drift * DRIFT_GAIN, 0.95, 1.05);
+    const sign = drift > 0 ? 1 : -1;
+    const correction = sign * Math.sqrt(absDrift) * DRIFT_GAIN;
+    const rate = clamp(1 + correction, 0.85, 1.50);
     video.playbackRate = rate;
 }
 ```
@@ -164,32 +166,35 @@ function syncLoop() {
 ### Visualization
 
 ```
-                    DRIFT_SOFT_MAX_SEC = 2.5s
+                    DRIFT_SOFT_MAX_SEC = 2.0s
                            │
     ◄─────────────────────┼────────────────────►
     │         │           │           │        │
   SEEK     SLOW      DEADZONE     FAST      SEEK
- (<−2.5s) (−2.5s     (±0.04s)   (+0.04s   (>+2.5s)
-           to −0.04s)            to +2.5s)
+ (<−2.0s) (−2.0s     (±0.04s)   (+0.04s   (>+2.0s)
+           to −0.04s)            to +2.0s)
     │         │                     │          │
-    │    rate = 0.95           rate = 1.05     │
-    │         │                     │          │
+    │    rate = 0.85           rate = 1.50     │
+    │     (min)                   (max)        │
     └─────────┴──────────┬──────────┴──────────┘
                          │
                     rate = 1.0
 ```
 
-### Rate Formula
+### Rate Formula (Progressive Sqrt Curve)
 
 ```
-rate = 1 + (drift * DRIFT_GAIN)
-     = 1 + (drift * 0.5)
+rate = 1 + sign(drift) * sqrt(|drift|) * DRIFT_GAIN
+     = 1 + sign(drift) * sqrt(|drift|) * 0.20
 
 Examples:
-- drift = +0.2s → rate = 1.10 (clamped to 1.05)
-- drift = -0.1s → rate = 0.95
-- drift = +0.05s → rate = 1.025
+- drift = +0.25s → rate = 1 + sqrt(0.25) * 0.20 = 1.10x
+- drift = +1.0s  → rate = 1 + sqrt(1.0) * 0.20 = 1.20x
+- drift = +2.0s  → rate = 1 + sqrt(2.0) * 0.20 = 1.28x
+- drift = -0.5s  → rate = 1 - sqrt(0.5) * 0.20 = 0.86x
 ```
+
+The sqrt curve provides stronger correction for larger drifts while staying smooth.
 
 ## 5. HLS Handling and Feedback Loop Prevention
 
@@ -374,15 +379,16 @@ fn schedule_pending_play(room_id, created_at, rooms, clients) {
 | Parameter | Value | Location | Description |
 |-----------|-------|----------|-------------|
 | `SUPPRESS_MS` | 2000ms | Client | Anti-feedback lock duration |
-| `SEEK_THRESHOLD` | 2.5s | Client | Min difference for seek |
+| `SEEK_THRESHOLD` | 1.0s | Client | Min difference for seek broadcast |
 | `STATE_UPDATE_MS` | 1000ms | Client | State send interval |
-| `SYNC_LEAD_MS` | 120ms | Client | Compensation advance |
+| `SYNC_LEAD_MS` | 300ms | Client | Compensation advance |
 | `DRIFT_DEADZONE_SEC` | 0.04s | Client | No-correction zone |
-| `DRIFT_SOFT_MAX_SEC` | 2.5s | Client | Forced seek threshold |
-| `PLAYBACK_RATE_MIN` | 0.95 | Client | Min catchup speed |
-| `PLAYBACK_RATE_MAX` | 1.05 | Client | Max catchup speed |
-| `DRIFT_GAIN` | 0.5 | Client | Proportional gain |
-| `PLAY_SCHEDULE_MS` | 1500ms | Server | Delay before play |
+| `DRIFT_SOFT_MAX_SEC` | 2.0s | Client | Forced seek threshold |
+| `PLAYBACK_RATE_MIN` | 0.85 | Client | Min catchup speed |
+| `PLAYBACK_RATE_MAX` | 1.50 | Client | Max catchup speed |
+| `DRIFT_GAIN` | 0.20 | Client | Proportional gain (sqrt curve) |
+| `SYNC_LOOP_MS` | 500ms | Client | Sync loop interval |
+| `PLAY_SCHEDULE_MS` | 1000ms | Server | Delay before play |
 | `CONTROL_SCHEDULE_MS` | 300ms | Server | Delay before pause/seek |
 | `MAX_READY_WAIT_MS` | 2000ms | Server | Ready timeout |
 | `MIN_STATE_UPDATE_INTERVAL_MS` | 500ms | Server | State rate limit |

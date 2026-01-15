@@ -7,6 +7,7 @@
 - **.NET 9.0 SDK** (for plugin development)
 - **Rust 1.70+** (for server development)
 - **Node.js 18+** (optional, for JS tooling)
+- **mold** (recommended, for faster Rust linking)
 
 ## Quick Start
 
@@ -285,6 +286,59 @@ cd plugins/jellyfin/OpenWatchParty
 dotnet clean
 dotnet build
 ```
+
+## Build Optimization (Rust)
+
+The Rust server has optimized build configuration for faster development cycles.
+
+### Mold Linker (Recommended)
+
+Install the `mold` linker for 5-10x faster linking:
+
+```bash
+# Arch Linux / Manjaro
+sudo pacman -S mold
+
+# Ubuntu/Debian
+sudo apt install mold
+
+# macOS (via Homebrew)
+brew install mold
+```
+
+The project's `.cargo/config.toml` automatically uses mold when available.
+
+### Cargo Configuration
+
+Located in `server/.cargo/config.toml`:
+
+```toml
+[build]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[profile.dev]
+incremental = true
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2  # Optimize dependencies (they rarely change)
+```
+
+### Tokio Features
+
+The server uses minimal tokio features to reduce compile times:
+
+```toml
+# Only what's needed (instead of "full")
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
+```
+
+### Build Times
+
+| Build Type | Without Optimization | With Optimization |
+|------------|---------------------|-------------------|
+| Clean build | ~4-5 min | ~2-3 min |
+| Incremental rebuild | ~15-20s | ~2-3s |
 
 ## IDE Setup
 

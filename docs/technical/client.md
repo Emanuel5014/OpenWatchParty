@@ -21,26 +21,30 @@ plugin.js              # Loader - loads modules in order
 ### Description
 Defines global shared state and configuration constants.
 
-### Constants (`OSP.constants`)
+### Constants (`OWP.constants`)
 
 | Constant | Type | Value | Description |
 |----------|------|-------|-------------|
-| `PANEL_ID` | string | `'osp-panel'` | Panel element ID |
-| `BTN_ID` | string | `'osp-osd-btn'` | OSD button ID |
-| `STYLE_ID` | string | `'osp-style'` | Style tag ID |
-| `HOME_SECTION_ID` | string | `'osp-home-section'` | Home section ID |
+| `PANEL_ID` | string | `'owp-panel'` | Panel element ID |
+| `BTN_ID` | string | `'owp-osd-btn'` | OSD button ID |
+| `STYLE_ID` | string | `'owp-style'` | Style tag ID |
+| `HOME_SECTION_ID` | string | `'owp-home-section'` | Home section ID |
 | `DEFAULT_WS_URL` | string | `ws(s)://host:3000/ws` | WebSocket server URL |
 | `SUPPRESS_MS` | number | `2000` | Event suppression duration (ms) |
-| `SEEK_THRESHOLD` | number | `2.5` | Difference threshold for seek (seconds) |
+| `SEEK_THRESHOLD` | number | `1.0` | Difference threshold for seek (seconds) |
 | `STATE_UPDATE_MS` | number | `1000` | State update send interval (ms) |
-| `SYNC_LEAD_MS` | number | `120` | Sync advance to compensate latency (ms) |
+| `SYNC_LEAD_MS` | number | `300` | Sync advance to compensate latency (ms) |
 | `DRIFT_DEADZONE_SEC` | number | `0.04` | Dead zone for no correction (seconds) |
-| `DRIFT_SOFT_MAX_SEC` | number | `2.5` | Threshold for forced seek (seconds) |
-| `PLAYBACK_RATE_MIN` | number | `0.95` | Minimum playback speed for catchup |
-| `PLAYBACK_RATE_MAX` | number | `1.05` | Maximum playback speed for catchup |
-| `DRIFT_GAIN` | number | `0.5` | Proportional gain for speed adjustment |
+| `DRIFT_SOFT_MAX_SEC` | number | `2.0` | Threshold for forced seek (seconds) |
+| `PLAYBACK_RATE_MIN` | number | `0.85` | Minimum playback speed for catchup |
+| `PLAYBACK_RATE_MAX` | number | `1.50` | Maximum playback speed for catchup |
+| `DRIFT_GAIN` | number | `0.20` | Proportional gain for speed adjustment (sqrt curve) |
+| `UI_CHECK_MS` | number | `2000` | UI injection check interval (ms) |
+| `PING_MS` | number | `10000` | Ping interval for RTT (ms) |
+| `HOME_REFRESH_MS` | number | `5000` | Home watch parties refresh (ms) |
+| `SYNC_LOOP_MS` | number | `500` | Sync loop interval (ms) |
 
-### State (`OSP.state`)
+### State (`OWP.state`)
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -321,7 +325,7 @@ Shows a toast notification.
 ## Module: `app.js`
 
 ### Description
-Main entry point and initialization loops.
+Main entry point, initialization loops, and cleanup management.
 
 ### Function `init()`
 
@@ -333,11 +337,40 @@ Main entry point and initialization loops.
 
 | Interval | Frequency | Action |
 |----------|-----------|--------|
-| UI injection | 1000ms | Inject OSD button if missing |
-| Video binding | 1000ms | Bind video events if video present |
-| Ping | 3000ms | Send ping for RTT measurement |
-| Home render | 2000ms | Refresh watch parties on home page |
-| Sync loop | 1000ms | Execute synchronization loop |
+| UI check | 2000ms | Inject OSD button, bind video, detect video player exit |
+| Ping | 10000ms | Send ping for RTT measurement |
+| Home render | 5000ms | Refresh watch parties on home page |
+| Sync loop | 500ms | Execute synchronization loop (non-hosts only) |
+
+### Auto-Cleanup on Video Player Exit
+
+The UI interval monitors the video element presence. When the user leaves the video player:
+
+1. **Detection**: `hadVideoElement` flag tracks if a video was present
+2. **Trigger**: When video element disappears from DOM, `onVideoPlayerExit()` is called
+3. **Actions**:
+   - Hide the OWP panel
+   - Leave the room if in one (`leaveRoom()`)
+   - Clean up video event listeners
+   - Reset `bound` state
+
+```javascript
+// In UI interval
+if (hadVideoElement && !video) {
+    hadVideoElement = false;
+    onVideoPlayerExit();
+    return;
+}
+```
+
+### Function `cleanup()`
+
+Full cleanup for plugin unload:
+- Clear all intervals
+- Clear pending action timers
+- Close WebSocket connection
+- Remove panel event listeners
+- Remove video event listeners
 
 ## Synchronization Flow Diagram
 
