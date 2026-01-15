@@ -13,7 +13,7 @@ use tokio_stream::wrappers::ReceiverStream;
 // Channel buffer size for client message queues (prevents OOM from slow clients)
 const CLIENT_CHANNEL_BUFFER: usize = 100;
 
-const PLAY_SCHEDULE_MS: u64 = 1500;
+const PLAY_SCHEDULE_MS: u64 = 1000;  // Reduced from 1500ms for better UX (UX-P1)
 const CONTROL_SCHEDULE_MS: u64 = 300;
 const MIN_STATE_UPDATE_INTERVAL_MS: u64 = 500;
 const POSITION_JITTER_THRESHOLD: f64 = 0.5;

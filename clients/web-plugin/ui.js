@@ -52,6 +52,15 @@
       }
       .owp-checkbox-row input { accent-color: #388e3c; }
       .owp-quality-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #333; }
+      /* UX-P3: Sync status indicator styles */
+      .owp-sync-status { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-top: 8px; padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.05); }
+      .owp-sync-dot { width: 8px; height: 8px; border-radius: 50%; }
+      .owp-sync-dot.synced { background: #69f0ae; }
+      .owp-sync-dot.syncing { background: #ffd740; animation: owp-pulse 1s infinite; }
+      .owp-sync-dot.pending { background: #ff9800; animation: owp-pulse 0.5s infinite; }
+      @keyframes owp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      .owp-sync-spinner { width: 12px; height: 12px; border: 2px solid #444; border-top-color: #ff9800; border-radius: 50%; animation: owp-spin 0.8s linear infinite; }
+      @keyframes owp-spin { to { transform: rotate(360deg); } }
     `;
     document.head.appendChild(style);
   };
@@ -62,6 +71,34 @@
     const connected = state.ws && state.ws.readyState === 1;
     el.style.color = connected ? '#69f0ae' : '#ff5252';
     el.textContent = connected ? 'Online' : 'Offline';
+  };
+
+  /**
+   * Update sync status indicator dynamically (UX-P3)
+   */
+  const updateSyncIndicator = () => {
+    const el = document.getElementById('owp-sync-indicator');
+    if (!el || state.isHost) return;
+
+    const status = state.syncStatus || 'synced';
+    let dotClass, label, showSpinner = false;
+
+    if (status === 'pending_play') {
+      dotClass = 'pending';
+      const remaining = Math.max(0, (state.pendingPlayUntil - (Date.now() + (state.serverOffsetMs || 0))) / 1000);
+      label = `Syncing playback... ${remaining.toFixed(1)}s`;
+      showSpinner = true;
+    } else if (status === 'syncing') {
+      dotClass = 'syncing';
+      label = 'Catching up...';
+    } else {
+      dotClass = 'synced';
+      label = 'Synced';
+    }
+
+    el.innerHTML = showSpinner
+      ? `<div class="owp-sync-spinner"></div><span>${label}</span>`
+      : `<div class="owp-sync-dot ${dotClass}"></div><span>${label}</span>`;
   };
 
   const updateRoomListUI = () => {
@@ -199,6 +236,36 @@
   };
 
   /**
+   * Build sync status indicator HTML (UX-P3)
+   */
+  const buildSyncStatusIndicator = () => {
+    if (state.isHost) return '';  // Host doesn't need sync indicator
+
+    const status = state.syncStatus || 'synced';
+    let dotClass, label, extra = '';
+
+    if (status === 'pending_play') {
+      dotClass = 'pending';
+      const remaining = Math.max(0, (state.pendingPlayUntil - (Date.now() + (state.serverOffsetMs || 0))) / 1000);
+      label = `Syncing playback... ${remaining.toFixed(1)}s`;
+      extra = '<div class="owp-sync-spinner"></div>';
+    } else if (status === 'syncing') {
+      dotClass = 'syncing';
+      label = 'Catching up...';
+    } else {
+      dotClass = 'synced';
+      label = 'Synced';
+    }
+
+    return `
+      <div class="owp-sync-status" id="owp-sync-indicator">
+        ${extra || `<div class="owp-sync-dot ${dotClass}"></div>`}
+        <span>${label}</span>
+      </div>
+    `;
+  };
+
+  /**
    * Build quality selector HTML (host only)
    */
   const buildQualitySelector = () => {
@@ -265,6 +332,7 @@
     // Skip full re-render if panel structure exists and state hasn't changed
     if (!forceFullRender && panel.dataset.inRoom === String(state.inRoom) && panel.children.length > 0) {
       updateStatusIndicator();
+      updateSyncIndicator();  // UX-P3: Update sync status dynamically
       updateRoomListUI();
       renderHomeWatchParties();
       return;
@@ -290,6 +358,7 @@
       updateRoomListUI();
     } else {
       const qualitySection = state.isHost ? buildQualitySelector() : buildQualityDisplay();
+      const syncIndicator = buildSyncStatusIndicator();  // UX-P3
       panel.innerHTML = `
         <div class="owp-header">
           <span style="color:#69f0ae">●</span>
@@ -299,6 +368,7 @@
         <div class="owp-section">
           <div class="owp-label">Participants</div>
           <div id="owp-participants-list" style="font-size:13px;">Online: ${state.participantCount || 1}</div>
+          ${syncIndicator}
         </div>
         ${qualitySection}
         <div class="owp-meta" style="font-size:10px; color:#666; display:flex; justify-content:space-between;">
@@ -371,6 +441,7 @@
   OWP.ui = {
     injectStyles,
     updateStatusIndicator,
+    updateSyncIndicator,  // UX-P3: Sync status update
     updateRoomListUI,
     renderHomeWatchParties,
     render,

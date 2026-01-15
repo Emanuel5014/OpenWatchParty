@@ -50,8 +50,8 @@
     host,
     DEFAULT_WS_URL: `${protocol}//${host}:3000/ws`,
     SUPPRESS_MS: 2000,
-    SEEK_THRESHOLD: 2.5,
-    STATE_UPDATE_MS: 2000,        // Increased from 1000ms - less aggressive state updates
+    SEEK_THRESHOLD: 1.0,          // Reduced from 2.5s - smaller seeks now broadcast (UX-P2)
+    STATE_UPDATE_MS: 1000,        // Reduced from 2000ms - more responsive state updates (UX-P1)
     SYNC_LEAD_MS: 300,            // Compensates processing + initial HLS buffer
     DRIFT_DEADZONE_SEC: 0.04,
     DRIFT_SOFT_MAX_SEC: 2.0,      // Seek to correct if drift > 2s
@@ -109,6 +109,8 @@
     wantsToPlay: false,
     isSyncing: false,
     syncCooldownUntil: 0,  // Timestamp until which position updates are ignored (after resume)
+    syncStatus: 'synced',  // 'synced' | 'syncing' | 'pending_play' - for UX indicator (UX-P3)
+    pendingPlayUntil: 0,   // Timestamp when pending play ends (for spinner) (UX-P3)
     // Authentication
     authToken: null,
     authEnabled: false,

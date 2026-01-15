@@ -314,12 +314,28 @@
             state.lastSyncServerTs = msg.server_ts;
             state.lastSyncPosition = msg.payload.position;
             // Set cooldown: let syncLoop catch up via playback rate
-            state.syncCooldownUntil = utils.nowMs() + 5000;
-            video.play().catch(() => {});
+            state.syncCooldownUntil = utils.nowMs() + 2000;  // Reduced from 5000ms (UX-P1)
+
+            // UX-P3: Show sync indicator during scheduled play delay
+            const targetTs = msg.payload.target_server_ts || msg.server_ts;
+            if (targetTs && targetTs > utils.getServerNow()) {
+              state.syncStatus = 'pending_play';
+              state.pendingPlayUntil = targetTs;
+              utils.scheduleAt(targetTs, () => {
+                state.syncStatus = 'syncing';
+                state.pendingPlayUntil = 0;
+                video.play().catch(() => {});
+              });
+            } else {
+              state.syncStatus = 'syncing';
+              video.play().catch(() => {});
+            }
 
           } else if (msg.payload.action === 'pause') {
             state.lastSyncPlayState = 'paused';
             state.syncCooldownUntil = 0;  // Clear cooldown on pause
+            state.syncStatus = 'synced';  // UX-P3: Mark as synced on pause
+            state.pendingPlayUntil = 0;
             // Pause immediately, no scheduling delay
             video.pause();
 
@@ -329,7 +345,7 @@
             state.lastSyncPlayState = hostPlayState;
             if (hostPlayState === 'playing') {
               // HOST is playing after seek - resume playback
-              state.syncCooldownUntil = utils.nowMs() + 5000;
+              state.syncCooldownUntil = utils.nowMs() + 2000;  // Reduced from 5000ms (UX-P1)
               video.play().catch(() => {});
             }
 
@@ -359,7 +375,7 @@
           state.lastSyncPosition = video.currentTime;
           // Set cooldown: ignore position updates for 3s to let syncLoop catch up
           // via playback rate instead of triggering HARD_SEEK from stale HOST position
-          state.syncCooldownUntil = utils.nowMs() + 5000;
+          state.syncCooldownUntil = utils.nowMs() + 2000;  // Reduced from 5000ms (UX-P1)
           return;  // Don't update position in this message - let video start playing first
         } else if (msg.payload.play_state === 'paused' && !video.paused) {
           utils.startSyncing();

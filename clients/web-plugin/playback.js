@@ -227,7 +227,7 @@
       }
       if (action === 'seek') {
         const now = utils.nowMs();
-        if (now - state.lastSeekSentAt < 500) return;
+        if (now - state.lastSeekSentAt < 250) return;  // Reduced from 500ms (UX-P2)
         if (Math.abs(video.currentTime - state.lastSentPosition) < SEEK_THRESHOLD) return;
         state.lastSeekSentAt = now;
         state.lastSentPosition = video.currentTime;
@@ -341,6 +341,11 @@
     const abs = Math.abs(drift);
     if (abs < DRIFT_DEADZONE_SEC) {
       if (video.playbackRate !== 1) video.playbackRate = 1;
+      // UX-P3: Mark as synced when drift is within acceptable range
+      if (state.syncStatus === 'syncing') {
+        state.syncStatus = 'synced';
+        if (OWP.ui && OWP.ui.updateSyncIndicator) OWP.ui.updateSyncIndicator();
+      }
       return;
     }
     if (abs >= DRIFT_SOFT_MAX_SEC) {
