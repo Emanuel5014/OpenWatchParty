@@ -8,7 +8,8 @@ pub type Rooms = Arc<RwLock<HashMap<String, Room>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    pub sender: mpsc::UnboundedSender<std::result::Result<warp::ws::Message, warp::Error>>,
+    // Bounded sender to prevent OOM from slow/malicious clients (P-RS03 fix)
+    pub sender: mpsc::Sender<std::result::Result<warp::ws::Message, warp::Error>>,
     pub room_id: Option<String>,
     pub user_id: String,
     pub user_name: String,

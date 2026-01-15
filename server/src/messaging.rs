@@ -35,7 +35,10 @@ pub fn send_to_client(client_id: &str, clients: &HashMap<String, Client>, msg: &
     if let Some(client) = clients.get(client_id) {
         match serde_json::to_string(msg) {
             Ok(json) => {
-                let _ = client.sender.send(Ok(warp::ws::Message::text(json)));
+                // Use try_send to avoid blocking on full buffer (bounded channel)
+                if let Err(e) = client.sender.try_send(Ok(warp::ws::Message::text(json))) {
+                    log::warn!("Failed to send to client {} (buffer full or closed): {}", client_id, e);
+                }
             }
             Err(e) => {
                 log::error!("Failed to serialize message for client {}: {}", client_id, e);
@@ -56,7 +59,10 @@ pub fn broadcast_to_room(room: &Room, clients: &HashMap<String, Client>, msg: &W
     for client_id in &room.clients {
         if Some(client_id.as_str()) == exclude { continue; }
         if let Some(client) = clients.get(client_id) {
-            let _ = client.sender.send(Ok(warp_msg.clone()));
+            // Use try_send to avoid blocking on full buffer (bounded channel)
+            if let Err(e) = client.sender.try_send(Ok(warp_msg.clone())) {
+                log::warn!("Failed to broadcast to client {} (buffer full or closed): {}", client_id, e);
+            }
         }
     }
 }

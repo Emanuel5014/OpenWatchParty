@@ -23,6 +23,8 @@ public class OpenWatchPartyController : ControllerBase
     // Rate limiting: max 30 tokens per minute per user (allows for reconnections)
     private const int MaxTokensPerMinute = 30;
     private static readonly ConcurrentDictionary<string, (int Count, DateTime ResetTime)> TokenRateLimits = new();
+    private static DateTime _lastRateLimitCleanup = DateTime.UtcNow;
+    private static readonly TimeSpan RateLimitCleanupInterval = TimeSpan.FromMinutes(5);
 
     // Cache for embedded script content (read once at startup)
     private static string? _cachedScript;
@@ -73,6 +75,32 @@ public class OpenWatchPartyController : ControllerBase
     }
 
     /// <summary>
+    /// Cleans up expired entries from the rate limit dictionary (P-CS01 fix).
+    /// Called periodically to prevent memory leak from accumulating stale entries.
+    /// </summary>
+    private static void CleanupExpiredRateLimits()
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastRateLimitCleanup < RateLimitCleanupInterval)
+        {
+            return;
+        }
+
+        _lastRateLimitCleanup = now;
+
+        // Remove all expired entries
+        var expiredKeys = TokenRateLimits
+            .Where(kvp => now > kvp.Value.ResetTime)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in expiredKeys)
+        {
+            TokenRateLimits.TryRemove(key, out _);
+        }
+    }
+
+    /// <summary>
     /// Generates a JWT token for the authenticated user to connect to the session server.
     /// Rate limited to 10 tokens per minute per user.
     /// </summary>
@@ -86,6 +114,9 @@ public class OpenWatchPartyController : ControllerBase
     [Produces("application/json")]
     public ActionResult GetToken()
     {
+        // P-CS01 fix: Periodically clean up expired rate limit entries to prevent memory leak
+        CleanupExpiredRateLimits();
+
         var config = Plugin.Instance?.Configuration;
         if (config == null)
         {

@@ -8,7 +8,10 @@ use log::{debug, info, warn};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::wrappers::ReceiverStream;
+
+// Channel buffer size for client message queues (prevents OOM from slow clients)
+const CLIENT_CHANNEL_BUFFER: usize = 100;
 
 const PLAY_SCHEDULE_MS: u64 = 1500;
 const CONTROL_SCHEDULE_MS: u64 = 300;
@@ -45,8 +48,9 @@ fn is_valid_media_id(id: &str) -> bool {
 
 pub async fn client_connection(ws: warp::ws::WebSocket, clients: Clients, rooms: crate::types::Rooms, jwt_config: Arc<JwtConfig>) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
-    let (client_sender, client_rcv) = mpsc::unbounded_channel();
-    let client_rcv = UnboundedReceiverStream::new(client_rcv);
+    // Use bounded channel to prevent OOM from slow/malicious clients (P-RS03 fix)
+    let (client_sender, client_rcv) = mpsc::channel(CLIENT_CHANNEL_BUFFER);
+    let client_rcv = ReceiverStream::new(client_rcv);
 
     tokio::task::spawn(async move {
         let _ = client_rcv.forward(client_ws_sender).await;
@@ -431,83 +435,115 @@ async fn client_msg(client_id: &str, msg: warp::ws::Message, clients: &Clients, 
         },
         "player_event" | "state_update" => {
             if let Some(ref room_id) = parsed.room {
-                let mut locked_rooms = rooms.write().await;
-                let locked_clients = clients.read().await;
+                // P-RS01 fix: Collect senders while holding lock, then send after releasing
+                // This reduces lock contention during broadcasts
+                let broadcast_data: Option<(Vec<mpsc::Sender<_>>, String)> = {
+                    let mut locked_rooms = rooms.write().await;
+                    let locked_clients = clients.read().await;
 
-                if let Some(room) = locked_rooms.get_mut(room_id) {
-                    if room.host_id != client_id {
-                        return;
-                    }
+                    if let Some(room) = locked_rooms.get_mut(room_id) {
+                        if room.host_id != client_id {
+                            None
+                        } else {
+                            let current_ts = now_ms();
 
-                    let current_ts = now_ms();
+                            // For state_update: filter out updates that are too frequent or have insignificant changes
+                            let should_process = if parsed.msg_type == "state_update" {
+                                if let Some(payload) = &parsed.payload {
+                                    let new_pos = payload.get("position").and_then(|v| v.as_f64()).unwrap_or(room.state.position);
+                                    let new_play_state = payload.get("play_state").and_then(|v| v.as_str()).unwrap_or(&room.state.play_state);
+                                    let play_state_changed = new_play_state != room.state.play_state;
+                                    let pos_diff = new_pos - room.state.position;
 
-                    // For state_update: filter out updates that are too frequent or have insignificant changes
-                    if parsed.msg_type == "state_update" {
-                        if let Some(payload) = &parsed.payload {
-                            let new_pos = payload.get("position").and_then(|v| v.as_f64()).unwrap_or(room.state.position);
-                            let new_play_state = payload.get("play_state").and_then(|v| v.as_str()).unwrap_or(&room.state.play_state);
-                            let play_state_changed = new_play_state != room.state.play_state;
-                            let pos_diff = new_pos - room.state.position;
-
-                            // Always allow state_update if play_state changed (critical for sync)
-                            // Only apply cooldown/throttle for position-only updates
-                            if !play_state_changed {
-                                // Ignore position-only updates during command cooldown (HLS echo prevention)
-                                if room.last_command_ts > 0 && current_ts - room.last_command_ts < COMMAND_COOLDOWN_MS {
-                                    return;
+                                    // Always allow state_update if play_state changed (critical for sync)
+                                    // Only apply cooldown/throttle for position-only updates
+                                    if !play_state_changed {
+                                        // Ignore position-only updates during command cooldown (HLS echo prevention)
+                                        if room.last_command_ts > 0 && current_ts - room.last_command_ts < COMMAND_COOLDOWN_MS {
+                                            false
+                                        } else if current_ts - room.last_state_ts < MIN_STATE_UPDATE_INTERVAL_MS {
+                                            false
+                                        } else if pos_diff < -POSITION_JITTER_THRESHOLD && pos_diff > -2.0 {
+                                            false
+                                        } else if pos_diff >= 0.0 && pos_diff < POSITION_JITTER_THRESHOLD {
+                                            false
+                                        } else {
+                                            true
+                                        }
+                                    } else {
+                                        true
+                                    }
+                                } else {
+                                    true
                                 }
-                                if current_ts - room.last_state_ts < MIN_STATE_UPDATE_INTERVAL_MS {
-                                    return;
+                            } else {
+                                true
+                            };
+
+                            if !should_process {
+                                None
+                            } else {
+                                if let Some(payload) = &parsed.payload {
+                                    // Validate and update position
+                                    if let Some(pos) = payload.get("position").and_then(|v| v.as_f64()) {
+                                        if is_valid_position(pos) {
+                                            room.state.position = pos;
+                                        }
+                                    }
+                                    // Validate and update play_state
+                                    if let Some(st) = payload.get("play_state").and_then(|v| v.as_str()) {
+                                        if is_valid_play_state(st) {
+                                            room.state.play_state = st.to_string();
+                                        }
+                                    }
+                                    if parsed.msg_type == "player_event" {
+                                        if let Some(action) = payload.get("action").and_then(|v| v.as_str()) {
+                                            if action == "play" { room.state.play_state = "playing".to_string(); }
+                                            if action == "pause" { room.state.play_state = "paused".to_string(); }
+                                        }
+                                    }
                                 }
-                                if pos_diff < -POSITION_JITTER_THRESHOLD && pos_diff > -2.0 {
-                                    return;
+
+                                room.last_state_ts = current_ts;
+
+                                if parsed.msg_type == "player_event" {
+                                    room.last_command_ts = current_ts;
+                                    let target_server_ts = now_ms() + CONTROL_SCHEDULE_MS;
+                                    if let Some(payload) = parsed.payload.as_mut() {
+                                        payload["target_server_ts"] = serde_json::json!(target_server_ts);
+                                    }
+                                    parsed.server_ts = Some(target_server_ts);
+                                } else {
+                                    parsed.server_ts = Some(now_ms());
                                 }
-                                if pos_diff >= 0.0 && pos_diff < POSITION_JITTER_THRESHOLD {
-                                    return;
+
+                                // Collect senders for clients in the room (excluding sender)
+                                let senders: Vec<_> = room.clients.iter()
+                                    .filter(|id| *id != client_id)
+                                    .filter_map(|id| locked_clients.get(id).map(|c| c.sender.clone()))
+                                    .collect();
+
+                                // Serialize message once
+                                match serde_json::to_string(&parsed) {
+                                    Ok(json) => Some((senders, json)),
+                                    Err(e) => {
+                                        log::error!("Failed to serialize message: {}", e);
+                                        None
+                                    }
                                 }
                             }
-                        }
-                    }
-
-                    if let Some(payload) = &parsed.payload {
-                        // Validate and update position
-                        if let Some(pos) = payload.get("position").and_then(|v| v.as_f64()) {
-                            if is_valid_position(pos) {
-                                room.state.position = pos;
-                            }
-                        }
-                        // Validate and update play_state
-                        if let Some(st) = payload.get("play_state").and_then(|v| v.as_str()) {
-                            if is_valid_play_state(st) {
-                                room.state.play_state = st.to_string();
-                            }
-                        }
-                        if parsed.msg_type == "player_event" {
-                             if let Some(action) = payload.get("action").and_then(|v| v.as_str()) {
-                                 if action == "play" { room.state.play_state = "playing".to_string(); }
-                                 if action == "pause" { room.state.play_state = "paused".to_string(); }
-                             }
-                        }
-                    }
-
-                    room.last_state_ts = current_ts;
-
-                    if parsed.msg_type == "player_event" {
-                        room.last_command_ts = current_ts;
-                        // Broadcast all player events (play, pause, seek, etc) immediately
-                        // Client-side syncLoop handles drift correction via playback rate
-                        let target_server_ts = now_ms() + CONTROL_SCHEDULE_MS;
-                        if let Some(payload) = parsed.payload.as_mut() {
-                            payload["target_server_ts"] = serde_json::json!(target_server_ts);
-                        }
-                        parsed.server_ts = Some(target_server_ts);
-                        for dest_id in &room.clients {
-                            if dest_id != client_id { send_to_client(dest_id, &locked_clients, &parsed); }
                         }
                     } else {
-                        parsed.server_ts = Some(now_ms());
-                        for dest_id in &room.clients {
-                            if dest_id != client_id { send_to_client(dest_id, &locked_clients, &parsed); }
+                        None
+                    }
+                }; // Locks released here
+
+                // Send messages without holding any locks (P-RS01 fix)
+                if let Some((senders, json)) = broadcast_data {
+                    let warp_msg = warp::ws::Message::text(json);
+                    for sender in senders {
+                        if let Err(e) = sender.try_send(Ok(warp_msg.clone())) {
+                            log::warn!("Failed to send player event (buffer full or closed): {}", e);
                         }
                     }
                 }
@@ -536,28 +572,52 @@ async fn client_msg(client_id: &str, msg: warp::ws::Message, clients: &Clients, 
         "quality_update" => {
             // Host broadcasts quality settings to all clients in the room
             if let Some(ref room_id) = parsed.room {
-                let locked_rooms = rooms.read().await;
-                let locked_clients = clients.read().await;
+                // P-RS01 fix: Collect senders while holding lock, then send after releasing
+                let broadcast_data: Option<(Vec<mpsc::Sender<_>>, String)> = {
+                    let locked_rooms = rooms.read().await;
+                    let locked_clients = clients.read().await;
 
-                if let Some(room) = locked_rooms.get(room_id) {
-                    // Only host can change quality settings
-                    if room.host_id != client_id {
-                        return;
-                    }
+                    if let Some(room) = locked_rooms.get(room_id) {
+                        // Only host can change quality settings
+                        if room.host_id != client_id {
+                            None
+                        } else {
+                            info!("Host {} updated quality settings for room {}", client_id, room_id);
 
-                    info!("Host {} updated quality settings for room {}", client_id, room_id);
-
-                    // Relay to all other clients in the room
-                    for dest_id in &room.clients {
-                        if dest_id != client_id {
-                            send_to_client(dest_id, &locked_clients, &WsMessage {
+                            let msg = WsMessage {
                                 msg_type: "quality_update".to_string(),
                                 room: Some(room_id.clone()),
                                 client: Some(client_id.to_string()),
                                 payload: parsed.payload.clone(),
                                 ts: now_ms(),
                                 server_ts: Some(now_ms()),
-                            });
+                            };
+
+                            // Collect senders for clients in the room (excluding sender)
+                            let senders: Vec<_> = room.clients.iter()
+                                .filter(|id| *id != client_id)
+                                .filter_map(|id| locked_clients.get(id).map(|c| c.sender.clone()))
+                                .collect();
+
+                            match serde_json::to_string(&msg) {
+                                Ok(json) => Some((senders, json)),
+                                Err(e) => {
+                                    log::error!("Failed to serialize quality_update: {}", e);
+                                    None
+                                }
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }; // Locks released here
+
+                // Send messages without holding any locks
+                if let Some((senders, json)) = broadcast_data {
+                    let warp_msg = warp::ws::Message::text(json);
+                    for sender in senders {
+                        if let Err(e) = sender.try_send(Ok(warp_msg.clone())) {
+                            log::warn!("Failed to send quality_update (buffer full or closed): {}", e);
                         }
                     }
                 }
