@@ -1,0 +1,12 @@
+[build]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[profile.dev]
+# Faster incremental builds
+incremental = true
+# Less optimization for faster compile
+opt-level = 0
+
+[profile.dev.package."*"]
+# But optimize dependencies (they don't change often)
+opt-level = 2
