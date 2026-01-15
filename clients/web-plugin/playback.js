@@ -315,7 +315,8 @@
   };
 
   const syncLoop = () => {
-    const video = utils.getVideo();
+    // P-JS02 fix: Use cached video element when available to avoid repeated DOM queries
+    const video = state.currentVideoElement || utils.getVideo();
     if (!video) return;
     if (!state.inRoom || state.isHost) {
       if (video.playbackRate !== 1) video.playbackRate = 1;

@@ -30,6 +30,11 @@ public class OpenWatchPartyController : ControllerBase
     private static string? _cachedScript;
     private static string? _cachedScriptETag;
 
+    // P-CS02 fix: Cache JWT signing credentials and handler to avoid repeated allocations
+    private static SigningCredentials? _cachedSigningCredentials;
+    private static string? _cachedJwtSecret;
+    private static readonly JwtSecurityTokenHandler _tokenHandler = new();
+
     /// <summary>
     /// Initializes a new instance of the controller with logging support.
     /// </summary>
@@ -190,10 +195,27 @@ public class OpenWatchPartyController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Gets or creates cached signing credentials (P-CS02 fix).
+    /// Credentials are cached and reused until the JWT secret changes.
+    /// </summary>
+    private static SigningCredentials GetSigningCredentials(string jwtSecret)
+    {
+        if (_cachedSigningCredentials != null && _cachedJwtSecret == jwtSecret)
+        {
+            return _cachedSigningCredentials;
+        }
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+        _cachedSigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+        _cachedJwtSecret = jwtSecret;
+        return _cachedSigningCredentials;
+    }
+
     private static string GenerateJwtToken(string userId, string userName, PluginConfiguration config)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config.JwtSecret));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+        // P-CS02 fix: Use cached signing credentials instead of creating new ones each time
+        var credentials = GetSigningCredentials(config.JwtSecret);
 
         var claims = new[]
         {
@@ -202,7 +224,7 @@ public class OpenWatchPartyController : ControllerBase
             new Claim(JwtRegisteredClaimNames.Aud, config.JwtAudience),
             new Claim(JwtRegisteredClaimNames.Iss, config.JwtIssuer),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),  // Unique token ID for revocation support (fixes B09)
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
         var token = new JwtSecurityToken(
@@ -213,6 +235,7 @@ public class OpenWatchPartyController : ControllerBase
             signingCredentials: credentials
         );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // P-CS02 fix: Use cached token handler instead of creating new one each time
+        return _tokenHandler.WriteToken(token);
     }
 }

@@ -1,7 +1,7 @@
 use crate::auth::JwtConfig;
 use crate::messaging::{broadcast_room_list, broadcast_to_room, send_room_list, send_to_client};
 use crate::room::{handle_leave, close_room};
-use crate::types::{Clients, PendingPlay, PlaybackState, Room, WsMessage};
+use crate::types::{Clients, PlaybackState, Room, WsMessage};
 use crate::utils::now_ms;
 use futures::StreamExt;
 use log::{debug, info, warn};
@@ -15,7 +15,6 @@ const CLIENT_CHANNEL_BUFFER: usize = 100;
 
 const PLAY_SCHEDULE_MS: u64 = 1500;
 const CONTROL_SCHEDULE_MS: u64 = 300;
-const MAX_READY_WAIT_MS: u64 = 2000;
 const MIN_STATE_UPDATE_INTERVAL_MS: u64 = 500;
 const POSITION_JITTER_THRESHOLD: f64 = 0.5;
 const COMMAND_COOLDOWN_MS: u64 = 2000;
@@ -34,7 +33,7 @@ const MAX_MESSAGE_SIZE: usize = 64 * 1024;  // 64 KB max message size
 /// Validates a playback position value.
 /// Returns false for NaN, Infinity, negative values, or values exceeding 24 hours (fixes L12).
 fn is_valid_position(pos: f64) -> bool {
-    pos.is_finite() && pos >= 0.0 && pos <= MAX_POSITION_SECONDS
+    pos.is_finite() && (0.0..=MAX_POSITION_SECONDS).contains(&pos)
 }
 
 fn is_valid_play_state(state: &str) -> bool {
@@ -123,41 +122,6 @@ async fn broadcast_scheduled_play(room: &mut Room, clients: &Clients, position: 
     };
     let locked_clients = clients.read().await;
     broadcast_to_room(room, &locked_clients, &msg, None);
-}
-
-fn schedule_pending_play(room_id: String, created_at: u64, rooms: crate::types::Rooms, clients: Clients) {
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(MAX_READY_WAIT_MS)).await;
-        let mut locked_rooms = rooms.write().await;
-        if let Some(room) = locked_rooms.get_mut(&room_id) {
-            if let Some(pending) = &room.pending_play {
-                if pending.created_at != created_at {
-                    return;
-                }
-                let target_server_ts = now_ms() + PLAY_SCHEDULE_MS;
-                let position = pending.position;
-                room.pending_play = None;
-
-                // Update room state
-                room.state.position = position;
-                room.state.play_state = "playing".to_string();
-                let msg = WsMessage {
-                    msg_type: "player_event".to_string(),
-                    room: Some(room.room_id.clone()),
-                    client: None,
-                    payload: Some(serde_json::json!({
-                        "action": "play",
-                        "position": position,
-                        "target_server_ts": target_server_ts
-                    })),
-                    ts: now_ms(),
-                    server_ts: Some(target_server_ts),
-                };
-                let locked_clients = clients.read().await;
-                broadcast_to_room(room, &locked_clients, &msg, None);
-            }
-        }
-    });
 }
 
 /// Returns true if the client is rate limited (should drop the message)
@@ -457,21 +421,16 @@ async fn client_msg(client_id: &str, msg: warp::ws::Message, clients: &Clients, 
 
                                     // Always allow state_update if play_state changed (critical for sync)
                                     // Only apply cooldown/throttle for position-only updates
-                                    if !play_state_changed {
-                                        // Ignore position-only updates during command cooldown (HLS echo prevention)
-                                        if room.last_command_ts > 0 && current_ts - room.last_command_ts < COMMAND_COOLDOWN_MS {
-                                            false
-                                        } else if current_ts - room.last_state_ts < MIN_STATE_UPDATE_INTERVAL_MS {
-                                            false
-                                        } else if pos_diff < -POSITION_JITTER_THRESHOLD && pos_diff > -2.0 {
-                                            false
-                                        } else if pos_diff >= 0.0 && pos_diff < POSITION_JITTER_THRESHOLD {
-                                            false
-                                        } else {
-                                            true
-                                        }
-                                    } else {
+                                    if play_state_changed {
                                         true
+                                    } else {
+                                        // Check various throttle conditions
+                                        let in_command_cooldown = room.last_command_ts > 0 && current_ts - room.last_command_ts < COMMAND_COOLDOWN_MS;
+                                        let too_frequent = current_ts - room.last_state_ts < MIN_STATE_UPDATE_INTERVAL_MS;
+                                        let small_backward_jitter = (-2.0..-POSITION_JITTER_THRESHOLD).contains(&pos_diff);
+                                        let small_forward_jitter = (0.0..POSITION_JITTER_THRESHOLD).contains(&pos_diff);
+
+                                        !(in_command_cooldown || too_frequent || small_backward_jitter || small_forward_jitter)
                                     }
                                 } else {
                                     true

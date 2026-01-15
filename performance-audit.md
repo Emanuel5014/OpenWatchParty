@@ -3,7 +3,7 @@
 > **Date**: 2026-01-15
 > **Version auditée**: main @ db12107
 > **Auditeur**: Claude Code
-> **Statut**: 3 problèmes critiques corrigés
+> **Statut**: 3 problèmes critiques + 3 problèmes haute priorité corrigés
 
 ---
 
@@ -111,11 +111,11 @@ Pour une room de 20 clients, cela représente 20 allocations par message.
 
 ### 2.1 Problèmes Principaux
 
-| Sévérité | Issue | Fichier | Lignes |
+| Sévérité | Issue | Fichier | Statut |
 |----------|-------|---------|--------|
-| **HAUTE** | Event listeners non nettoyés | `ui.js`, `app.js` | Multiple |
-| **MOYENNE** | syncLoop actif même hors room | `app.js` | 76-80 |
-| **MOYENNE** | Double envoi de messages | `playback.js` | 237-244 |
+| **HAUTE** | Event listeners non nettoyés | `app.js` | ✅ Résolu |
+| **MOYENNE** | DOM queries répétées dans syncLoop | `playback.js` | ✅ Résolu |
+| **MOYENNE** | Double envoi de messages | `playback.js` | En attente |
 
 #### P-JS01 - Fuite mémoire des event listeners
 
@@ -201,7 +201,7 @@ const escapeHtml = (str) => {
 | Sévérité | Issue | Fichier | Statut |
 |----------|-------|---------|--------|
 | **HAUTE** | Fuite mémoire rate limiting | `OpenWatchPartyController.cs` | ✅ Résolu |
-| **HAUTE** | JWT credentials créées à chaque token | `OpenWatchPartyController.cs` | En attente |
+| **HAUTE** | JWT credentials créées à chaque token | `OpenWatchPartyController.cs` | ✅ Résolu |
 
 #### P-CS01 - Fuite mémoire du rate limiting (CRITIQUE) ✅ RÉSOLU
 
@@ -216,25 +216,16 @@ const escapeHtml = (str) => {
 
 ---
 
-#### P-CS02 - Allocations JWT répétées
+#### P-CS02 - Allocations JWT répétées ✅ RÉSOLU
 
-**Fichier**: `Controllers/OpenWatchPartyController.cs:164-165, 185`
+**Fichier**: `Controllers/OpenWatchPartyController.cs`
 
-```csharp
-// Créé à CHAQUE génération de token
-var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config.JwtSecret));
-var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-// ...
-return new JwtSecurityTokenHandler().WriteToken(token);
-```
+**Problème**: `SigningCredentials` et `JwtSecurityTokenHandler` étaient créés à chaque génération de token, causant ~40% d'allocations évitables.
 
-**Impact**: ~40% des allocations par token request sont évitables.
-
-**Solution**: Cacher `SigningCredentials` et `JwtSecurityTokenHandler`:
-```csharp
-private static SigningCredentials? _cachedCredentials;
-private static readonly JwtSecurityTokenHandler _tokenHandler = new();
-```
+**Solution appliquée**:
+- `SigningCredentials` maintenant caché et réutilisé jusqu'au changement de secret
+- `JwtSecurityTokenHandler` statique et partagé
+- Fonction `GetSigningCredentials()` gère l'invalidation du cache si le secret change
 
 ---
 

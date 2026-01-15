@@ -16,6 +16,9 @@
     if (state.intervals.stateUpdate) { clearInterval(state.intervals.stateUpdate); state.intervals.stateUpdate = null; }
   };
 
+  // P-JS01 fix: Store panel listener reference for cleanup
+  let panelStopPropagation = null;
+
   const init = () => {
     // Guard against multiple initializations (Jellyfin SPA navigation may re-trigger)
     if (state.initialized) {
@@ -37,12 +40,13 @@
       document.body.appendChild(panel);
 
       // Prevent all events from propagating to the video player
-      const stopPropagation = (e) => e.stopPropagation();
-      panel.addEventListener('click', stopPropagation);
-      panel.addEventListener('mousedown', stopPropagation);
-      panel.addEventListener('keydown', stopPropagation);
-      panel.addEventListener('keyup', stopPropagation);
-      panel.addEventListener('keypress', stopPropagation);
+      // P-JS01 fix: Store reference for cleanup
+      panelStopPropagation = (e) => e.stopPropagation();
+      panel.addEventListener('click', panelStopPropagation);
+      panel.addEventListener('mousedown', panelStopPropagation);
+      panel.addEventListener('keydown', panelStopPropagation);
+      panel.addEventListener('keyup', panelStopPropagation);
+      panel.addEventListener('keypress', panelStopPropagation);
     }
     if (OWP.actions && OWP.actions.connect) {
       console.log('[OpenWatchParty] Initiating WebSocket connection...');
@@ -86,6 +90,18 @@
       state.ws.close();
       state.ws = null;
     }
+    // P-JS01 fix: Clean up panel event listeners
+    if (panelStopPropagation) {
+      const panel = document.getElementById(OWP.constants.PANEL_ID);
+      if (panel) {
+        panel.removeEventListener('click', panelStopPropagation);
+        panel.removeEventListener('mousedown', panelStopPropagation);
+        panel.removeEventListener('keydown', panelStopPropagation);
+        panel.removeEventListener('keyup', panelStopPropagation);
+        panel.removeEventListener('keypress', panelStopPropagation);
+      }
+      panelStopPropagation = null;
+    }
     // Clean up video listeners if any
     if (state.currentVideoElement && state.videoListeners) {
       const video = state.currentVideoElement;
@@ -100,6 +116,7 @@
       state.currentVideoElement = null;
     }
     state.bound = false;
+    state.initialized = false;
   };
 
   OWP.app = { init, cleanup };
