@@ -93,6 +93,20 @@
         hadVideoElement = true;
         ui.injectOsdButton();
         playback.bindVideo();
+
+        // Check for pending room join (from home page card click)
+        if (state.pendingJoinRoomId) {
+          console.log('[OpenWatchParty] Video detected, pendingJoinRoomId:', state.pendingJoinRoomId);
+          if (OWP.actions && OWP.actions.joinRoom) {
+            const roomId = state.pendingJoinRoomId;
+            state.pendingJoinRoomId = '';  // Clear to prevent multiple joins
+            // Small delay to let video initialize
+            setTimeout(() => {
+              console.log('[OpenWatchParty] Auto-joining room:', roomId);
+              OWP.actions.joinRoom(roomId);
+            }, 500);
+          }
+        }
       }
     }, UI_CHECK_MS);
 

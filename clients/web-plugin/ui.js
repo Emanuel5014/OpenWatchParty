@@ -186,13 +186,58 @@
       }
     }
 
-    // Click handler
-    card.addEventListener('click', () => {
-      if (OWP.actions && OWP.actions.joinRoom) {
-        OWP.actions.joinRoom(room.id);
-        if (room.media_id && OWP.playback && OWP.playback.ensurePlayback) {
-          OWP.playback.ensurePlayback(room.media_id);
+    // Click handler for play button - start media and join room
+    const joinBtn = card.querySelector('.owp-join-btn');
+    if (joinBtn) {
+      joinBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log('[OpenWatchParty] Play button clicked for room:', room.id, 'media:', room.media_id);
+
+        if (!room.media_id) {
+          showToast('No media in this room');
+          return;
         }
+
+        // Store room to join after video loads
+        state.pendingJoinRoomId = room.id;
+        console.log('[OpenWatchParty] Set pendingJoinRoomId:', room.id);
+
+        // Get server ID for the playback
+        const serverId = window.ApiClient?.serverId?.() || window.ApiClient?._serverInfo?.Id || '';
+
+        // Navigate to item details page (use #/ format, not #!/)
+        console.log('[OpenWatchParty] Navigating to details page');
+        const detailsUrl = `#/details?id=${room.media_id}&serverId=${serverId}`;
+        window.location.hash = detailsUrl;
+
+        // Poll for play button AND wait for page data to be loaded
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max (50 * 100ms)
+        const checkInterval = setInterval(() => {
+          attempts++;
+          // Check if the item name is loaded (indicates page controller is ready)
+          const itemName = document.querySelector('.itemName bdi');
+          const playBtn = document.querySelector('.mainDetailButtons .btnPlay, .mainDetailButtons button[data-action="resume"], .mainDetailButtons button[data-action="play"]');
+
+          if (playBtn && itemName && itemName.textContent.trim()) {
+            console.log('[OpenWatchParty] Play button found and page ready, clicking it');
+            clearInterval(checkInterval);
+            playBtn.click();
+          } else if (attempts >= maxAttempts) {
+            console.log('[OpenWatchParty] Play button not found or page not ready after 5s, giving up');
+            clearInterval(checkInterval);
+          }
+        }, 100);
+      });
+    }
+
+    // Click on card (not button) - just navigate to media details
+    card.addEventListener('click', (e) => {
+      // Don't trigger if clicking the play button
+      if (e.target.closest('.owp-join-btn')) return;
+      // Navigate to media details if available
+      if (room.media_id && window.Emby && window.Emby.Page) {
+        window.Emby.Page.show('/details?id=' + room.media_id);
       }
     });
 
