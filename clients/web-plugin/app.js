@@ -18,6 +18,27 @@
 
   // P-JS01 fix: Store panel listener reference for cleanup
   let panelStopPropagation = null;
+  let hadVideoElement = false;
+
+  // Clean up OWP when leaving video player
+  const onVideoPlayerExit = () => {
+    console.log('[OpenWatchParty] Video player closed, cleaning up...');
+
+    // Hide the panel
+    const panel = document.getElementById(OWP.constants.PANEL_ID);
+    if (panel) panel.classList.add('hide');
+
+    // Leave room if in one
+    if (state.inRoom && OWP.actions && OWP.actions.leaveRoom) {
+      OWP.actions.leaveRoom();
+    }
+
+    // Clean up video listeners
+    if (OWP.playback && OWP.playback.cleanupVideoListeners) {
+      OWP.playback.cleanupVideoListeners();
+    }
+    state.bound = false;
+  };
 
   const init = () => {
     // Guard against multiple initializations (Jellyfin SPA navigation may re-trigger)
@@ -58,8 +79,21 @@
     // UI check interval - inject OSD button and bind video (only when tab is visible, fixes M-P04)
     state.intervals.ui = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      ui.injectOsdButton();
-      if (utils.getVideo()) playback.bindVideo();
+
+      const video = utils.getVideo();
+
+      // Detect video player exit: had video before, but not anymore
+      if (hadVideoElement && !video) {
+        hadVideoElement = false;
+        onVideoPlayerExit();
+        return;
+      }
+
+      if (video) {
+        hadVideoElement = true;
+        ui.injectOsdButton();
+        playback.bindVideo();
+      }
     }, UI_CHECK_MS);
 
     // Ping interval - only when connected
@@ -91,6 +125,8 @@
       clearTimeout(state.pendingActionTimer);
       state.pendingActionTimer = null;
     }
+    // Reset video player tracking
+    hadVideoElement = false;
     if (state.ws) {
       state.ws.close();
       state.ws = null;

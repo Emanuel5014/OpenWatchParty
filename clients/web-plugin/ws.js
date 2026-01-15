@@ -43,7 +43,9 @@
     state.inRoom = false;
     state.roomId = '';
     state.readyRoomId = '';
-    ui.render();
+    // Hide the panel instead of showing lobby
+    const panel = document.getElementById(OWP.constants.PANEL_ID);
+    if (panel) panel.classList.add('hide');
   };
 
   /**
