@@ -40,32 +40,73 @@
     return pm.currentItem || pm._currentItem || null;
   };
   /**
-   * Gets the current item ID from playback manager or URL.
-   * Jellyfin item IDs are 32 hex characters (fixes L13).
+   * Gets the current item ID from playback manager, DOM, or URL.
+   * Jellyfin item IDs are 32 hex characters.
    */
   const getCurrentItemId = () => {
-    // Prefer the playback manager as the authoritative source
-    const item = getCurrentItem();
-    if (item) return item.Id || item.id || item.ItemId || null;
+    // Method 1: Try Jellyfin's internal playback tracking
+    // Check various Jellyfin globals for current playing item
+    try {
+      // Try window.NowPlayingItem (set by some Jellyfin versions)
+      if (window.NowPlayingItem?.Id) return window.NowPlayingItem.Id;
 
-    // Fallback: parse from URL hash (less reliable but works for direct links)
+      // Try Emby.Page for current item context
+      if (window.Emby?.Page?.currentItem?.Id) return window.Emby.Page.currentItem.Id;
+
+      // Try getting from appRouter's current view
+      if (window.appRouter?.currentRouteInfo?.options?.item?.Id) {
+        return window.appRouter.currentRouteInfo.options.item.Id;
+      }
+
+      // Try sessionStorage for playback info
+      const playbackInfo = sessionStorage.getItem('playbackInfo');
+      if (playbackInfo) {
+        const info = JSON.parse(playbackInfo);
+        if (info?.ItemId && /^[a-f0-9]{32}$/i.test(info.ItemId)) return info.ItemId;
+      }
+    } catch (e) { /* ignore */ }
+
+    // Method 2: Try playback manager
+    const pm = getPlaybackManager();
+    if (pm) {
+      const item = getCurrentItem();
+      if (item?.Id) return item.Id;
+    }
+
+    // Method 3: Check video OSD for title element with data attributes
+    const titleEl = document.querySelector('.osdTitle[data-id], .videoOsdTitle[data-id], [class*="osd"] [data-id]');
+    if (titleEl?.dataset?.id && /^[a-f0-9]{32}$/i.test(titleEl.dataset.id)) {
+      return titleEl.dataset.id;
+    }
+
+    // Method 4: Check the page for any visible item ID in data attributes
+    const itemIdEl = document.querySelector('.videoOsd [data-itemid], .videoOsdBottom [data-itemid]');
+    if (itemIdEl?.dataset?.itemid && /^[a-f0-9]{32}$/i.test(itemIdEl.dataset.itemid)) {
+      return itemIdEl.dataset.itemid;
+    }
+
+    // Method 5: Parse from current URL hash
     const hash = window.location.hash || '';
-    // Match various Jellyfin URL patterns: id=xxx, /items/xxx, /videos/xxx
     const patterns = [
-      /[?&]id=([a-f0-9]{32})/i,           // Query param: ?id=xxx or &id=xxx
-      /\/items\/([a-f0-9]{32})/i,         // Path: /items/xxx
-      /\/videos\/([a-f0-9]{32})/i,        // Path: /videos/xxx
-      /id=([a-f0-9]{32})/i                // Simple: id=xxx (legacy)
+      /[?&]id=([a-f0-9]{32})/i,
+      /\/items\/([a-f0-9]{32})/i,
+      /\/videos\/([a-f0-9]{32})/i,
+      /id=([a-f0-9]{32})/i
     ];
     for (const pattern of patterns) {
       const match = hash.match(pattern);
       if (match) return match[1];
     }
+
     return null;
   };
-  const getItemImageUrl = (itemId) => {
-    if (!itemId || !window.ApiClient || typeof ApiClient.getItemImageUrl !== 'function') return '';
-    return ApiClient.getItemImageUrl(itemId, { type: 'Primary', quality: 90 });
+  const getItemImageUrl = (itemId, imageTag) => {
+    if (!itemId || !window.ApiClient) return '';
+    const serverUrl = window.ApiClient._serverAddress || window.ApiClient.serverAddress?.() || '';
+    if (!serverUrl) return '';
+    let url = `${serverUrl}/Items/${itemId}/Images/Primary?quality=90`;
+    if (imageTag) url += `&tag=${imageTag}`;
+    return url;
   };
   const isHomeView = () => {
     if (document.querySelector('.homePage')) return true;

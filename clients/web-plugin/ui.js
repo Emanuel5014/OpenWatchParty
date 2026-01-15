@@ -119,43 +119,74 @@
     });
   };
 
-  const createRoomCard = (room) => {
-    let imageUrl = '';
-    if (room.media_id) {
-      imageUrl = state.homeRoomCache.get(room.media_id) || utils.getItemImageUrl(room.media_id);
-      if (imageUrl) state.homeRoomCache.set(room.media_id, imageUrl);
-    }
-
+  /**
+   * Create a Jellyfin-style card for a watch party room
+   */
+  const createRoomCard = (room, index) => {
     const card = document.createElement('div');
-    card.className = 'owp-room-card';
+    card.className = 'card overflowPortraitCard card-hoverable card-withuserdata owp-room-card';
+    card.dataset.index = index;
     card.dataset.roomId = room.id;
     card.dataset.mediaId = room.media_id || '';
     card.dataset.count = room.count;
-    card.style.cssText = 'display:flex;gap:12px;cursor:pointer;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,0.05);';
 
-    const cover = document.createElement('div');
-    cover.style.cssText = 'width:120px;height:180px;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;';
-    // Security: only allow http(s) URLs to prevent XSS via javascript: or data: URLs
-    if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
-      cover.style.backgroundImage = `url('${imageUrl.replace(/'/g, "\\'")}')`;
-      cover.style.backgroundPosition = 'center';
-      cover.style.backgroundSize = 'cover';
-      cover.style.backgroundRepeat = 'no-repeat';
-    } else {
-      cover.innerHTML = '<span style="color:#666;font-size:12px;">No Cover</span>';
-    }
-
-    const info = document.createElement('div');
-    info.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-    info.innerHTML = `
-      <div class="owp-card-name" style="font-weight:600;font-size:16px;">${utils.escapeHtml(room.name)}</div>
-      <div class="owp-card-count" style="font-size:12px;color:#aaa;">${room.count} participant${room.count > 1 ? 's' : ''}</div>
-      <div style="font-size:12px;color:#69f0ae;">Join</div>
+    // Build card HTML structure matching Jellyfin's native card format exactly
+    card.innerHTML = `
+      <div class="cardBox cardBox-bottompadded">
+        <div class="cardScalable">
+          <div class="cardPadder cardPadder-overflowPortrait">
+            <span class="cardImageIcon material-icons groups owp-card-icon" aria-hidden="true"></span>
+          </div>
+          <div class="cardImageContainer coveredImage cardContent owp-card-image-container" style="background-color:#1a1a1a;">
+            <div class="innerCardFooter">
+              <div class="cardText" style="color:#69f0ae;font-weight:600;">
+                <span class="material-icons" style="font-size:14px;vertical-align:middle;">groups</span>
+                ${room.count} watching
+              </div>
+            </div>
+          </div>
+          <div class="cardOverlayContainer itemAction">
+            <button class="cardOverlayButton cardOverlayButton-hover cardOverlayFab-primary owp-join-btn paper-icon-button-light">
+              <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover play_arrow" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <div class="cardText cardTextCentered cardText-first owp-card-name">
+          <bdi>${utils.escapeHtml(room.name)}</bdi>
+        </div>
+        <div class="cardText cardTextCentered cardText-secondary owp-card-media">
+          <bdi class="owp-media-title">${room.media_id ? 'Loading...' : 'No media'}</bdi>
+        </div>
+      </div>
     `;
 
-    card.appendChild(cover);
-    card.appendChild(info);
+    // Fetch media info if we have media_id
+    if (room.media_id && window.ApiClient) {
+      const userId = window.ApiClient.getCurrentUserId?.() || window.ApiClient._currentUserId;
+      if (userId) {
+        window.ApiClient.getItem(userId, room.media_id).then(item => {
+          // Set media title
+          const titleEl = card.querySelector('.owp-media-title');
+          if (titleEl && item?.Name) {
+            titleEl.textContent = item.Name;
+          }
+          // Set background-image on cardImageContainer (Jellyfin style)
+          const containerEl = card.querySelector('.owp-card-image-container');
+          const iconEl = card.querySelector('.owp-card-icon');
+          if (containerEl && item?.ImageTags?.Primary) {
+            const serverUrl = window.ApiClient._serverAddress || window.ApiClient.serverAddress?.() || '';
+            const imageUrl = `${serverUrl}/Items/${room.media_id}/Images/Primary?fillHeight=237&fillWidth=158&quality=96&tag=${item.ImageTags.Primary}`;
+            containerEl.style.backgroundImage = `url("${imageUrl}")`;
+            if (iconEl) iconEl.style.display = 'none';
+          }
+        }).catch(() => {
+          const titleEl = card.querySelector('.owp-media-title');
+          if (titleEl) titleEl.textContent = 'Unknown';
+        });
+      }
+    }
 
+    // Click handler
     card.addEventListener('click', () => {
       if (OWP.actions && OWP.actions.joinRoom) {
         OWP.actions.joinRoom(room.id);
@@ -177,31 +208,36 @@
     if (!section) {
       section = document.createElement('div');
       section.id = HOME_SECTION_ID;
-      section.style.cssText = 'margin: 12px 16px 24px;';
+      section.className = 'verticalSection verticalSection-extrabottompadding';
       container.prepend(section);
     }
 
-    // No rooms - clear section
+    // No rooms - remove section entirely
     if (!state.rooms || state.rooms.length === 0) {
-      if (section.innerHTML !== '') section.innerHTML = '';
+      if (section.parentNode) section.remove();
       return;
     }
 
-    // Ensure container structure exists
-    let cardsContainer = section.querySelector('.owp-cards-container');
-    if (!cardsContainer) {
+    // Ensure container structure exists with Jellyfin-native classes
+    let itemsContainer = section.querySelector('.itemsContainer');
+    if (!itemsContainer) {
       section.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="font-weight:700;font-size:18px;">Watch Parties</div>
+        <div class="sectionTitleContainer sectionTitleContainer-cards padded-left padded-right">
+          <h2 class="sectionTitle sectionTitle-cards">
+            <span class="material-icons sectionTitleIcon" style="margin-right:8px;">groups</span>
+            Watch Parties
+          </h2>
         </div>
-        <div class="owp-cards-container" style="display:flex;gap:16px;flex-wrap:wrap;"></div>
+        <div class="emby-scroller" data-horizontal="true" data-centerfocus="true">
+          <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x padded-left padded-right"></div>
+        </div>
       `;
-      cardsContainer = section.querySelector('.owp-cards-container');
+      itemsContainer = section.querySelector('.itemsContainer');
     }
 
     // Build map of existing cards
     const existingCards = new Map();
-    cardsContainer.querySelectorAll('.owp-room-card').forEach(card => {
+    itemsContainer.querySelectorAll('.owp-room-card').forEach(card => {
       existingCards.set(card.dataset.roomId, card);
     });
 
@@ -216,20 +252,20 @@
     });
 
     // Update or create cards
-    state.rooms.forEach(room => {
+    state.rooms.forEach((room, index) => {
       const existing = existingCards.get(room.id);
       if (existing) {
         // Update count if changed
         if (existing.dataset.count !== String(room.count)) {
           existing.dataset.count = room.count;
-          const countEl = existing.querySelector('.owp-card-count');
+          const countEl = existing.querySelector('.innerCardFooter .cardText');
           if (countEl) {
-            countEl.textContent = `${room.count} participant${room.count > 1 ? 's' : ''}`;
+            countEl.innerHTML = `<span class="material-icons" style="font-size:14px;vertical-align:middle;">groups</span> ${room.count} watching`;
           }
         }
       } else {
         // Create new card
-        cardsContainer.appendChild(createRoomCard(room));
+        itemsContainer.appendChild(createRoomCard(room, index));
       }
     });
   };
