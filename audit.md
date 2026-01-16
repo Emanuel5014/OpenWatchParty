@@ -908,51 +908,46 @@ CMD ["session-server"]
 
 ## 8. Plan d'Action Recommandé
 
-### 8.1 Actions Immédiates (Cette Semaine)
-
-| # | Action | Priorité | Effort | Statut |
-|---|--------|----------|--------|--------|
-| 1 | Créer `CHANGELOG.md` | Critique | 1h | FAIT |
-| 2 | Corriger constantes timing dans docs | Critique | 30min | FAIT |
-| 3 | Ajouter utilisateur non-root au Dockerfile | Critique | 15min | À faire |
-| 4 | Fix bug position 0 dans ws.js | Haute | 15min | À faire |
-| 5 | Ajouter logging erreurs JSON | Haute | 15min | À faire |
-
-### 8.2 Court Terme (Ce Mois)
-
-| # | Action | Priorité | Effort | Statut |
-|---|--------|----------|--------|--------|
-| 6 | Créer CI/CD GitHub Actions (tests, lint) | Critique | 4h | À faire |
-| 7 | Ajouter tests unitaires Rust | Haute | 8h | **FAIT** (27 tests) |
-| 8 | Compléter UI configuration plugin | Haute | 2h | À faire |
-| 9 | Implémenter token refresh client | Haute | 2h | À faire |
-| 10 | Créer `.env.example` | Haute | 30min | À faire |
-| 11 | Ajouter HEALTHCHECK Docker | Haute | 15min | À faire |
-| 12 | Documenter Home section | Haute | 1h | **FAIT** |
-
-### 8.3 Moyen Terme (Ce Trimestre)
-
-| # | Action | Priorité | Effort | Statut |
-|---|--------|----------|--------|--------|
-| 13 | Ajouter métriques Prometheus | Moyenne | 4h | À faire |
-| 14 | Implémenter backoff reconnection WS | Moyenne | 1h | À faire |
-| 15 | Créer UI quality control | Moyenne | 4h | À faire |
-| 16 | Migrer logs structurés (tracing) | Moyenne | 2h | À faire |
-| 17 | Ajouter pre-commit hooks | Moyenne | 1h | À faire |
-| 18 | Enum message dispatch Rust | Moyenne | 2h | **FAIT** |
-| 19 | Tests unitaires plugin C# | Moyenne | 4h | À faire |
-| 20 | Documenter limitations sécurité JWT | Moyenne | 1h | **FAIT** |
-
-### 8.4 Long Terme (Backlog)
+### 8.1 Actions Complétées ✅
 
 | # | Action | Priorité | Statut |
 |---|--------|----------|--------|
-| 21 | Tests unitaires client JS | Basse | À faire |
-| 22 | Mots de passe room | Basse | À faire |
-| 23 | Permissions utilisateur avancées | Basse | À faire |
-| 24 | Révocation tokens | Basse | À faire |
-| 25 | Glossaire documentation | Basse | **FAIT** |
-| 26 | Diagrammes architecture complets | Basse | **FAIT** |
+| 1 | Créer `CHANGELOG.md` | Critique | ✅ FAIT |
+| 2 | Corriger constantes timing dans docs | Critique | ✅ FAIT |
+| 3 | Ajouter utilisateur non-root au Dockerfile | Critique | ✅ FAIT |
+| 4 | Fix bug position 0 dans ws.js | Haute | ✅ FAIT |
+| 5 | Ajouter logging erreurs JSON | Haute | ✅ FAIT |
+| 6 | Créer CI/CD GitHub Actions (tests, lint, security) | Critique | ✅ FAIT |
+| 7 | Ajouter tests unitaires Rust | Haute | ✅ FAIT (27 tests) |
+| 8 | Compléter UI configuration plugin | Haute | ✅ FAIT |
+| 9 | Implémenter token refresh client | Haute | ✅ FAIT |
+| 10 | Créer `.env.example` | Haute | ✅ FAIT |
+| 11 | Ajouter HEALTHCHECK Docker | Haute | ✅ FAIT |
+| 12 | Documenter Home section | Haute | ✅ FAIT |
+| 14 | Implémenter backoff reconnection WS | Moyenne | ✅ FAIT |
+| 18 | Enum message dispatch Rust | Moyenne | ✅ FAIT |
+| 19 | Tests unitaires plugin C# | Moyenne | ✅ FAIT (31 tests) |
+| 20 | Documenter limitations sécurité JWT | Moyenne | ✅ FAIT |
+| 25 | Glossaire documentation | Basse | ✅ FAIT |
+| 26 | Diagrammes architecture complets | Basse | ✅ FAIT |
+
+### 8.2 Actions Restantes (Moyenne Priorité)
+
+| # | Action | Effort | Notes |
+|---|--------|--------|-------|
+| 13 | Ajouter métriques Prometheus | 4h | Observabilité production |
+| 15 | Créer UI quality control | 4h | Interface changement qualité |
+| 16 | Migrer logs structurés (tracing) | 2h | Meilleure analyse logs |
+| 17 | Ajouter pre-commit hooks | 1h | Automatisation qualité code |
+
+### 8.3 Backlog (Basse Priorité / Features)
+
+| # | Action | Notes |
+|---|--------|-------|
+| 21 | Tests unitaires client JS | Optionnel - code stable |
+| 22 | Mots de passe room | Feature planifiée |
+| 23 | Permissions utilisateur avancées | Feature planifiée |
+| 24 | Révocation tokens | Feature planifiée |
 
 ---
 
