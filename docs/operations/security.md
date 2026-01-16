@@ -98,15 +98,57 @@ This allows any website to connect to your session server.
 
 ## Rate Limiting
 
-### Token Endpoint
+### Token Endpoint (Plugin)
 
-- **Limit:** 10 tokens per minute per user
+- **Limit:** 30 tokens per minute per user
 - **Purpose:** Prevents token abuse
+- **Scope:** Per authenticated Jellyfin user
+
+### WebSocket Messages (Server)
+
+- **Limit:** 30 messages per second per client
+- **Purpose:** Prevents message flooding
+- **Scope:** Per WebSocket connection (client UUID)
 
 ### Message Size
 
 - **Limit:** 64 KB per message
 - **Purpose:** Prevents memory exhaustion attacks
+
+### Important: Rate Limiting is Per-Client, Not Per-IP
+
+The session server rate limits by **client UUID** (WebSocket connection), not by IP address. This means:
+
+- An attacker could bypass rate limits by opening multiple WebSocket connections
+- Each new connection gets a fresh rate limit quota
+
+**Why this design?**
+- The server doesn't have direct access to client IPs (often behind reverse proxy)
+- Per-connection limiting is simpler and works in most scenarios
+- Most abuse cases are prevented by JWT authentication
+
+**For production deployments**, implement IP-based rate limiting at the reverse proxy level:
+
+```nginx
+# nginx example
+limit_req_zone $binary_remote_addr zone=ws_limit:10m rate=10r/s;
+
+location /ws {
+    limit_req zone=ws_limit burst=20 nodelay;
+    proxy_pass http://session-server:3000;
+    # ... websocket config
+}
+```
+
+```yaml
+# Traefik example
+http:
+  middlewares:
+    rate-limit:
+      rateLimit:
+        average: 10
+        burst: 20
+```
 
 ## HTTPS/WSS
 
@@ -229,6 +271,8 @@ Security warnings logged:
 | No user permissions (democratic mode) | Planned |
 | No persistent sessions | Planned |
 | Single secret for all users | By design |
+| Rate limiting per client, not IP | By design (use reverse proxy) |
+| No token revocation | By design (short TTL, rotate secret) |
 
 ## What JWT Authentication Does NOT Protect
 

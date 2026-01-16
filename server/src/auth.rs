@@ -54,7 +54,12 @@ impl JwtConfig {
         let enabled = !secret.is_empty();
 
         if !enabled {
-            log::warn!("JWT_SECRET not set, authentication DISABLED");
+            log::warn!("=======================================================");
+            log::warn!("SECURITY WARNING: JWT_SECRET not set!");
+            log::warn!("Authentication is DISABLED - anyone can join rooms.");
+            log::warn!("This is acceptable for development/private networks.");
+            log::warn!("For production, set JWT_SECRET environment variable.");
+            log::warn!("=======================================================");
         } else {
             // Validate secret quality (fixes L04, L15, audit 3.6.2)
             // Note: We don't log exact lengths to avoid information leakage

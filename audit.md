@@ -48,6 +48,7 @@ OpenWatchParty est un projet bien architecturé avec une documentation de qualit
 | Problèmes haute priorité | 12 (3 doc + 2 Rust + 2 C# + 4 JS + 3 infra corrigés) |
 | Problèmes moyenne priorité | 15 (3 doc + 2 Rust + 1 C# + 1 JS + 2 infra corrigés) |
 | Problèmes basse priorité | 10 (3 doc + 1 C# + 1 JS corrigés) |
+| Préoccupations sécurité | 4 (2 corrigés + 2 documentés) |
 | Tests unitaires | **27** (Rust) + **31** (C#) = **58** |
 | Couverture CI/CD | **100%** (ci.yml, security.yml, release.yml) |
 
@@ -850,36 +851,58 @@ CMD ["session-server"]
 
 #### 7.2.1 JWT Secret Optionnel
 
-**Problème :** `JWT_SECRET` vide = authentification désactivée par défaut.
+**Statut :** CORRIGÉ
 
-**Recommandation :** Exiger configuration explicite en production.
+~~**Problème :** `JWT_SECRET` vide = authentification désactivée par défaut.~~
+
+**Corrections appliquées :**
+- Avertissement explicite au démarrage si JWT_SECRET non configuré
+- Banner de sécurité bien visible dans les logs
+- Message indiquant que c'est acceptable pour dev mais pas pour production
 
 #### 7.2.2 Pas de Révocation Token
 
+**Statut :** DOCUMENTÉ
+
 **Problème :** Tokens compromis restent valides jusqu'à expiration.
 
-**Recommandation :** Implémenter blacklist ou documenter limitation.
+**Documentation ajoutée :**
+- Section "Known Limitations" dans `docs/operations/security.md`
+- Explication que la rotation du secret invalide tous les tokens
+- Recommandation de TTL court (défaut 1h)
 
 #### 7.2.3 Pas de Rate Limiting par IP
 
-**Problème :** Rate limiting par client UUID, pas par IP. Attaquant peut générer multiples UUIDs.
+**Statut :** DOCUMENTÉ
 
-**Recommandation :** Documenter que rate limiting réseau (reverse proxy) est requis.
+~~**Problème :** Rate limiting par client UUID, pas par IP.~~
+
+**Documentation ajoutée :**
+- Section détaillée "Rate Limiting is Per-Client, Not Per-IP" dans security.md
+- Explication du design (pas d'accès direct aux IPs derrière reverse proxy)
+- Exemples nginx et Traefik pour rate limiting IP au niveau proxy
+- Ajouté aux "Known Limitations"
 
 #### 7.2.4 Noms Non Sanitizés
 
-**Localisation :** `ws.rs` lignes 236, 280
+**Statut :** CORRIGÉ (commit 02dad71)
 
-**Problème :** Noms utilisateur/room pas sanitizés (longueur, contenu).
+~~**Problème :** Noms utilisateur/room pas sanitizés (longueur, contenu).~~
 
-**Recommandation :** Valider et sanitizer tous les inputs texte.
+**Corrections appliquées :**
+- `MAX_NAME_LENGTH = 100` caractères
+- Fonction `is_valid_name()` : vérifie longueur et caractères de contrôle
+- Fonction `sanitize_name()` : trim, tronque, supprime caractères de contrôle
+- Validation appliquée dans handlers `auth` et `create_room`
 
 ### 7.3 Recommandations
 
-1. Créer `SECURITY.md` avec politique de disclosure
-2. Documenter architecture sécurité et limitations
-3. Ajouter scanning vulnérabilités en CI (cargo-audit)
-4. Implémenter validation secret au démarrage
+| Recommandation | Statut |
+|----------------|--------|
+| Créer `SECURITY.md` avec politique de disclosure | ✓ FAIT |
+| Documenter architecture sécurité et limitations | ✓ FAIT |
+| Ajouter scanning vulnérabilités en CI (cargo-audit) | ✓ FAIT |
+| Implémenter validation secret au démarrage | ✓ FAIT |
 
 ---
 
