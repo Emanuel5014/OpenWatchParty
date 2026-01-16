@@ -1,3 +1,9 @@
+---
+title: Server
+parent: Technical
+nav_order: 3
+---
+
 # Session Server (Rust)
 
 ## Overview

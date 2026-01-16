@@ -1,3 +1,9 @@
+---
+title: Architecture
+parent: Technical
+nav_order: 1
+---
+
 # Architecture
 
 ## System Overview

@@ -1,3 +1,9 @@
+---
+title: Setup
+parent: Development
+nav_order: 1
+---
+
 # Development Setup
 
 ## Prerequisites

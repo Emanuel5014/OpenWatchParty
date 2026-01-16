@@ -1,3 +1,9 @@
+---
+title: Plugin
+parent: Technical
+nav_order: 5
+---
+
 # Jellyfin Plugin (C#)
 
 ## Overview

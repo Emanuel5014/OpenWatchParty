@@ -1,3 +1,9 @@
+---
+title: Contributing
+parent: Development
+nav_order: 2
+---
+
 # Contributing Guide
 
 Thank you for your interest in contributing to OpenWatchParty!

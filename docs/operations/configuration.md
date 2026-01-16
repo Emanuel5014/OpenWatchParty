@@ -1,3 +1,9 @@
+---
+title: Configuration
+parent: Operations
+nav_order: 2
+---
+
 # Configuration Guide
 
 ## Plugin Configuration

@@ -1,3 +1,9 @@
+---
+title: Sync Algorithms
+parent: Technical
+nav_order: 6
+---
+
 # Synchronization Algorithms
 
 ## Overview

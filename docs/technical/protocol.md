@@ -1,3 +1,9 @@
+---
+title: Protocol
+parent: Technical
+nav_order: 2
+---
+
 # WebSocket Protocol Specification
 
 ## Overview

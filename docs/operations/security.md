@@ -1,3 +1,9 @@
+---
+title: Security
+parent: Operations
+nav_order: 4
+---
+
 # Security Guide
 
 ## Overview

@@ -1,3 +1,9 @@
+---
+title: Monitoring
+parent: Operations
+nav_order: 6
+---
+
 # Monitoring Guide
 
 ## Health Checks

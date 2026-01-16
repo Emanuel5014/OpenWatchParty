@@ -1,3 +1,9 @@
+---
+title: Installation
+parent: Operations
+nav_order: 1
+---
+
 # Installation Guide
 
 ## Prerequisites

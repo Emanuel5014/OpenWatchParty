@@ -1,3 +1,9 @@
+---
+title: Client
+parent: Technical
+nav_order: 4
+---
+
 # JavaScript Client
 
 ## Overview

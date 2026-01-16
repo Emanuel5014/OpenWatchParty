@@ -1,3 +1,9 @@
+---
+title: Overview
+parent: Getting Started
+nav_order: 1
+---
+
 # Overview
 
 ## What is OpenWatchParty?

@@ -1,3 +1,9 @@
+---
+title: User Guide
+parent: Getting Started
+nav_order: 3
+---
+
 # User Guide
 
 ## Getting Started

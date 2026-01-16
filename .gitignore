@@ -16,5 +16,11 @@ plugins/jellyfin/OpenWatchParty/Web/*.js
 # Rust build artifacts
 server/target/
 
+# Jekyll
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/Gemfile.lock
+
 # OS
 .DS_Store

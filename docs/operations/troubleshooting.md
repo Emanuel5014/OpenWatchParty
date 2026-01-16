@@ -1,3 +1,9 @@
+---
+title: Troubleshooting
+parent: Operations
+nav_order: 5
+---
+
 # Troubleshooting Guide
 
 ## Quick Diagnostic Checklist

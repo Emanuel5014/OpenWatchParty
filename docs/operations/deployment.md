@@ -1,3 +1,9 @@
+---
+title: Deployment
+parent: Operations
+nav_order: 3
+---
+
 # Production Deployment
 
 ## Architecture Overview

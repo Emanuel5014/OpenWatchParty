@@ -1,3 +1,9 @@
+---
+title: FAQ
+parent: Getting Started
+nav_order: 4
+---
+
 # Frequently Asked Questions
 
 ## General
