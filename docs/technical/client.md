@@ -37,8 +37,8 @@ Defines global shared state and configuration constants.
 | `DRIFT_DEADZONE_SEC` | number | `0.04` | Dead zone for no correction (seconds) |
 | `DRIFT_SOFT_MAX_SEC` | number | `2.0` | Threshold for forced seek (seconds) |
 | `PLAYBACK_RATE_MIN` | number | `0.85` | Minimum playback speed for catchup |
-| `PLAYBACK_RATE_MAX` | number | `1.50` | Maximum playback speed for catchup |
-| `DRIFT_GAIN` | number | `0.20` | Proportional gain for speed adjustment (sqrt curve) |
+| `PLAYBACK_RATE_MAX` | number | `2.0` | Maximum playback speed for catchup |
+| `DRIFT_GAIN` | number | `0.50` | Proportional gain for speed adjustment (sqrt curve) |
 | `UI_CHECK_MS` | number | `2000` | UI injection check interval (ms) |
 | `PING_MS` | number | `10000` | Ping interval for RTT (ms) |
 | `HOME_REFRESH_MS` | number | `5000` | Home watch parties refresh (ms) |
@@ -209,9 +209,9 @@ Synchronization loop called every second (non-hosts only).
 6. Calculate drift:
    drift = expected - video.currentTime
 7. If |drift| < DRIFT_DEADZONE (0.04s) → playbackRate = 1
-8. If |drift| >= DRIFT_SOFT_MAX (2.5s) → forced seek to expected
-9. Otherwise → adjust playbackRate:
-   rate = clamp(1 + drift * DRIFT_GAIN, 0.95, 1.05)
+8. If |drift| >= DRIFT_SOFT_MAX (2.0s) → forced seek to expected
+9. Otherwise → adjust playbackRate using sqrt curve:
+   rate = clamp(1 + sign(drift) * sqrt(|drift|) * DRIFT_GAIN, 0.85, 2.0)
 ```
 
 ## Module: `ws.js`

@@ -103,7 +103,7 @@ Messages take time to arrive. When client receives "position = 120s", the host i
 function adjustedPosition(position, serverTs) {
     const serverNow = getServerNow();
     const elapsed = Math.max(0, serverNow - serverTs);  // Time since send
-    const lead = SYNC_LEAD_MS;  // 120ms margin
+    const lead = SYNC_LEAD_MS;  // 300ms margin
 
     return position + (elapsed + lead) / 1000;
 }
@@ -158,7 +158,7 @@ function syncLoop() {
     // drift < 0 = ahead = slow down
     const sign = drift > 0 ? 1 : -1;
     const correction = sign * Math.sqrt(absDrift) * DRIFT_GAIN;
-    const rate = clamp(1 + correction, 0.85, 1.50);
+    const rate = clamp(1 + correction, 0.85, 2.0);
     video.playbackRate = rate;
 }
 ```
@@ -174,7 +174,7 @@ function syncLoop() {
  (<−2.0s) (−2.0s     (±0.04s)   (+0.04s   (>+2.0s)
            to −0.04s)            to +2.0s)
     │         │                     │          │
-    │    rate = 0.85           rate = 1.50     │
+    │    rate = 0.85           rate = 2.0      │
     │     (min)                   (max)        │
     └─────────┴──────────┬──────────┴──────────┘
                          │
