@@ -7,6 +7,19 @@ services:
     ports:
       - "${SESSION_SERVER_PORT:-3000}:3000"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   jellyfin-dev:
     image: jellyfin/jellyfin:10.11.3

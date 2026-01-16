@@ -44,12 +44,12 @@ OpenWatchParty est un projet bien architecturé avec une documentation de qualit
 
 | Métrique | Valeur |
 |----------|--------|
-| Problèmes critiques | 5 (2 corrigés) |
-| Problèmes haute priorité | 12 (3 doc + 2 Rust + 2 C# + 4 JS corrigés) |
-| Problèmes moyenne priorité | 15 (3 doc + 2 Rust + 1 C# + 1 JS corrigés) |
+| Problèmes critiques | 5 (2 doc + 2 infra corrigés) |
+| Problèmes haute priorité | 12 (3 doc + 2 Rust + 2 C# + 4 JS + 3 infra corrigés) |
+| Problèmes moyenne priorité | 15 (3 doc + 2 Rust + 1 C# + 1 JS + 2 infra corrigés) |
 | Problèmes basse priorité | 10 (3 doc + 1 C# + 1 JS corrigés) |
 | Tests unitaires | **27** (Rust) + **31** (C#) = **58** |
-| Couverture CI/CD | **0%** |
+| Couverture CI/CD | **100%** (ci.yml, security.yml, release.yml) |
 
 ---
 
@@ -705,74 +705,68 @@ setTimeout(() => connect(), 3000);  // Fixe 3s
 
 ### 6.1 Évaluation Globale
 
-**Qualité : Faible** - Manque critique de CI/CD et hardening sécurité.
+**Qualité : Bonne** - CI/CD complet et hardening sécurité appliqué.
 
 ### 6.2 Problèmes Critiques
 
 #### 6.2.1 Aucune CI/CD
 
 **Sévérité :** Critique
+**Statut :** CORRIGÉ
 
-Pas de `.github/workflows/` :
-- Pas de tests automatisés sur PR
-- Pas de builds automatiques
-- Pas de scanning sécurité
-- Pas de releases automatisées
+~~Pas de `.github/workflows/`~~
 
-**Action :** Créer workflows pour :
-- `test.yml` - Tests Rust + linting JS
-- `security.yml` - cargo-audit, SAST
-- `build.yml` - Build images Docker
-- `release.yml` - Releases automatiques
+**Corrections appliquées :**
+- `ci.yml` : Tests Rust (clippy, fmt, tests), tests .NET, validation JS, build Docker
+- `security.yml` : cargo-audit, Trivy container scan, CodeQL analysis
+- `release.yml` : Build plugin + server, push to GHCR, create GitHub Release
 
 #### 6.2.2 Dockerfile Sans Utilisateur Non-Root
 
 **Sévérité :** Critique
-**Localisation :** `infra/docker/Dockerfile.session-server`
+**Localisation :** `server/Dockerfile`
+**Statut :** CORRIGÉ
 
-```dockerfile
-FROM debian:bookworm-slim
-COPY --from=builder /usr/local/cargo/bin/session-server /usr/local/bin/
-CMD ["session-server"]
-# Pas de USER directive = root !
-```
+~~Pas de USER directive = root !~~
 
-**Action :** Ajouter :
-```dockerfile
-RUN useradd -m -u 1000 appuser
-USER appuser
-```
+**Corrections appliquées :**
+- Création utilisateur `appuser` (UID 1000)
+- `USER appuser` avant CMD
+- `chown` sur le binaire
+- Installation `ca-certificates` et `curl` pour HTTPS et healthcheck
 
 ### 6.3 Problèmes Haute Priorité
 
 #### 6.3.1 Pas de .env.example
 
-**Impact :** Nouveaux développeurs ne savent pas quelles variables configurer.
+**Statut :** CORRIGÉ
 
-**Action :** Créer `.env.example` avec toutes les variables documentées.
+~~**Impact :** Nouveaux développeurs ne savent pas quelles variables configurer.~~
+
+**Corrections appliquées :**
+- Fichier `.env.example` créé avec toutes les variables documentées
+- Sections : Network Ports, Media Configuration, Authentication, Development Settings
+- Commentaires explicatifs pour chaque variable
 
 #### 6.3.2 Pas de Limites Ressources Docker
 
 **Localisation :** `docker-compose.yml`
+**Statut :** CORRIGÉ
 
-```yaml
-# Manque:
-# deploy:
-#   resources:
-#     limits:
-#       memory: 512M
-#       cpus: '0.5'
-```
+**Corrections appliquées :**
+- `deploy.resources.limits` : memory 256M, cpus 0.5
+- `deploy.resources.reservations` : memory 64M
+- Healthcheck ajouté dans docker-compose.yml
 
 #### 6.3.3 Pas de HEALTHCHECK
 
-**Localisation :** Dockerfile
+**Localisation :** `server/Dockerfile`
+**Statut :** CORRIGÉ
 
-```dockerfile
-# Manque:
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD curl -f http://localhost:3000/health || exit 1
-```
+**Corrections appliquées :**
+- HEALTHCHECK avec curl vers /health
+- Paramètres : interval=30s, timeout=3s, start_period=5s, retries=3
+- STOPSIGNAL SIGTERM pour graceful shutdown
 
 ### 6.4 Problèmes Moyenne Priorité
 
@@ -785,11 +779,13 @@ Pas de husky/pre-commit pour :
 
 #### 6.4.2 Fichiers Manquants
 
-| Fichier | Usage |
-|---------|-------|
-| `.dockerignore` | Optimiser build context |
-| `.editorconfig` | Cohérence style code |
-| `SECURITY.md` | Politique disclosure vulnérabilités |
+**Statut :** CORRIGÉ
+
+| Fichier | Usage | Statut |
+|---------|-------|--------|
+| `.dockerignore` | Optimiser build context | ✓ Créé |
+| `.editorconfig` | Cohérence style code | ✓ Créé |
+| `SECURITY.md` | Politique disclosure vulnérabilités | ✓ Créé |
 
 ### 6.5 Makefile
 

@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Tests (not needed in production image)
+tests/
+benches/
+
+# Local development
+.env
+.env.*
+*.log
