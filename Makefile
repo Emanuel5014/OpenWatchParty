@@ -91,6 +91,11 @@ help: ## Show this help
 	@echo "  $(GREEN)lint$(RESET)               Run all linters (Rust + JS)"
 	@echo "  $(GREEN)fmt$(RESET)                Format all code"
 	@echo "  $(GREEN)check$(RESET)              Run cargo check (fast compile check)"
+	@echo "  $(GREEN)pre-commit$(RESET)         Run all pre-commit hooks"
+	@echo ""
+	@echo "$(BOLD)$(CYAN)Setup:$(RESET)"
+	@echo "  $(GREEN)setup$(RESET)              Setup development environment"
+	@echo "  $(GREEN)setup-hooks$(RESET)        Install pre-commit hooks"
 	@echo ""
 	@echo "$(BOLD)$(CYAN)Cleanup:$(RESET)"
 	@echo "  $(GREEN)clean$(RESET)              Clean all build artifacts"
@@ -293,6 +298,29 @@ check: ## Run cargo check (fast compile check)
 	@echo "$(CYAN)▶ Running cargo check...$(RESET)"
 	@cd $(SERVER_DIR) && cargo check
 	@echo "$(GREEN)✓ Check passed$(RESET)"
+
+# ----------------------------------------------------------------------------
+# Setup
+# ----------------------------------------------------------------------------
+.PHONY: setup setup-hooks
+
+setup: setup-hooks ## Setup development environment
+	@echo "$(GREEN)✓ Development environment ready$(RESET)"
+
+setup-hooks: ## Install pre-commit hooks
+	@echo "$(CYAN)▶ Installing pre-commit hooks...$(RESET)"
+	@if command -v pre-commit &> /dev/null; then \
+		pre-commit install; \
+		pre-commit install --hook-type pre-push; \
+		echo "$(GREEN)✓ Hooks installed$(RESET)"; \
+	else \
+		echo "$(YELLOW)⚠ pre-commit not found. Install with: pip install pre-commit$(RESET)"; \
+		exit 1; \
+	fi
+
+pre-commit: ## Run all pre-commit hooks manually
+	@echo "$(CYAN)▶ Running pre-commit hooks...$(RESET)"
+	@pre-commit run --all-files
 
 # ----------------------------------------------------------------------------
 # Cleanup

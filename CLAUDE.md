@@ -37,6 +37,10 @@ make test            # Run Rust tests
 make lint            # Run clippy + eslint
 make fmt             # Format Rust code
 make check           # Fast cargo check
+make pre-commit      # Run all pre-commit hooks
+
+# Setup
+make setup           # Install pre-commit hooks (run once after clone)
 
 # Observability
 make logs            # Follow all logs
@@ -80,3 +84,4 @@ JWT_SECRET=               # Enable auth (empty = disabled)
 
 - **No AI signatures**: Do not add `Co-Authored-By: Claude` or similar AI attribution lines in commits
 - **Update documentation**: After making code changes, update relevant documentation in `docs/` if the changes affect user-facing behavior, configuration options, APIs, or architecture
+- **Pre-commit hooks**: Run `make setup` after cloning to install hooks that check formatting, linting, and tests before each commit
