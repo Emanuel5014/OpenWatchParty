@@ -56,7 +56,32 @@ This starts:
 
 ### Session Server
 
-#### Option A: Docker
+#### Option A: Pre-built Image (Recommended)
+
+Use the official image from GitHub Container Registry:
+
+```bash
+# Latest stable release
+docker run -d \
+  --name owp-session \
+  -p 3000:3000 \
+  -e ALLOWED_ORIGINS="http://localhost:8096" \
+  ghcr.io/mhbxyz/openwatchparty-session-server:latest
+
+# Or use a specific version
+docker run -d \
+  --name owp-session \
+  -p 3000:3000 \
+  ghcr.io/mhbxyz/openwatchparty-session-server:v0.1.0
+
+# Or use the beta (latest from main branch)
+docker run -d \
+  --name owp-session \
+  -p 3000:3000 \
+  ghcr.io/mhbxyz/openwatchparty-session-server:beta
+```
+
+#### Option B: Build from Source (Docker)
 
 ```bash
 # Build the image
@@ -70,10 +95,10 @@ docker run -d \
   openwatchparty-session-server
 ```
 
-#### Option B: Build from Source
+#### Option C: Build from Source (Native)
 
 Requirements:
-- Rust 1.70+
+- Rust 1.83+
 
 ```bash
 cd server
@@ -167,7 +192,7 @@ docker run -d \
   -e ALLOWED_ORIGINS="https://jellyfin.example.com" \
   -e JWT_SECRET="your-32-character-secret-key-here" \
   -e LOG_LEVEL="debug" \
-  openwatchparty-session-server
+  ghcr.io/mhbxyz/openwatchparty-session-server:latest
 ```
 
 ## Firewall Configuration
