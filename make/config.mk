@@ -1,0 +1,44 @@
+# ============================================================================
+# Configuration
+# ============================================================================
+
+PROJECT_NAME    := OpenWatchParty
+COMPOSE_FILE    := infra/docker/docker-compose.yml
+COMPOSE         := docker compose -f $(COMPOSE_FILE)
+COMPOSE_TOOLS   := docker compose --profile tools -f $(COMPOSE_FILE)
+
+# Directories
+PLUGIN_DIR      := plugins/jellyfin/OpenWatchParty
+CLIENT_DIR      := clients/jellyfin-web
+SERVER_DIR      := server
+DOCS_DIR        := docs
+
+# Containers
+JELLYFIN_CTR    := jellyfin-dev
+SESSION_CTR     := owp-session-server
+
+# User mapping for Docker (avoid root-owned files)
+export UID      := $(shell id -u)
+export GID      := $(shell id -g)
+
+# Client JS files (order matters for plugin loading)
+CLIENT_JS_FILES := state.js utils.js ui.js playback.js chat.js ws.js app.js
+
+# Colors (disable with NO_COLOR=1)
+ifndef NO_COLOR
+  GREEN  := \033[0;32m
+  YELLOW := \033[0;33m
+  BLUE   := \033[0;34m
+  CYAN   := \033[0;36m
+  RED    := \033[0;31m
+  BOLD   := \033[1m
+  RESET  := \033[0m
+else
+  GREEN  :=
+  YELLOW :=
+  BLUE   :=
+  CYAN   :=
+  RED    :=
+  BOLD   :=
+  RESET  :=
+endif
