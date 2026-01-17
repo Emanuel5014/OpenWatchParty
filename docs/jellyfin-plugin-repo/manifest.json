@@ -6,6 +6,15 @@
     "overview": "Synchronized watch parties for Jellyfin. Create or join rooms to watch content together with friends, perfectly in sync.",
     "owner": "mhbxyz",
     "category": "General",
-    "versions": []
+    "versions": [
+      {
+        "version": "0.1.0",
+        "changelog": "Initial beta release",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/mhbxyz/OpenWatchParty/releases/download/v0.1.0/OpenWatchParty-v0.1.0.zip",
+        "checksum": "b01de477d72f24982dc999ffa9cfe29d",
+        "timestamp": "2026-01-17T19:42:17Z"
+      }
+    ]
   }
 ]
