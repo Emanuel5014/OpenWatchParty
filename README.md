@@ -29,14 +29,14 @@ OpenWatchParty enables synchronized media playback for [Jellyfin](https://jellyf
 
 ## ✨ Features
 
-| | Feature | Description |
-|---|---------|-------------|
-| 🎬 | **Real-time Sync** | Play, pause, and seek — everyone stays together |
-| 🏠 | **Room System** | Create or join watch parties with a single click |
-| ⚡ | **Drift Correction** | Automatic playback speed adjustment keeps everyone aligned |
-| 🔒 | **Optional Auth** | JWT-based authentication for private sessions |
-| 🎨 | **Native UI** | Integrated into Jellyfin's web interface |
-| 🌐 | **HLS Support** | Works with Jellyfin's adaptive streaming |
+| Feature | Description |
+|---------|-------------|
+| 🎬 **Real-time Sync** | Play, pause, and seek — everyone stays together |
+| 🏠 **Room System** | Create or join watch parties with a single click |
+| ⚡ **Drift Correction** | Automatic playback speed adjustment keeps everyone aligned |
+| 🔒 **Optional Auth** | JWT-based authentication for private sessions |
+| 🎨 **Native UI** | Integrated into Jellyfin's web interface |
+| 🌐 **HLS Support** | Works with Jellyfin's adaptive streaming |
 
 ## 🚀 Quick Start
 
