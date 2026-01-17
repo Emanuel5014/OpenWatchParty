@@ -66,7 +66,8 @@ pub enum ClientMessageType {
     Unknown,
 }
 
-/// Outgoing message types from server
+/// Outgoing message types from server (reserved for future use)
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerMessageType {
