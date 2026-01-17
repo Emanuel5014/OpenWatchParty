@@ -15,7 +15,11 @@ pub async fn handle_disconnect(client_id: &str, clients: &Clients, rooms: &Rooms
     broadcast_room_list(clients, rooms).await;
 }
 
-pub fn handle_leave(client_id: &str, clients: &mut HashMap<String, Client>, rooms: &mut HashMap<String, Room>) {
+pub fn handle_leave(
+    client_id: &str,
+    clients: &mut HashMap<String, Client>,
+    rooms: &mut HashMap<String, Room>,
+) {
     let mut room_to_remove = None;
     let mut clients_to_notify = Vec::new();
 
@@ -61,7 +65,9 @@ pub fn handle_leave(client_id: &str, clients: &mut HashMap<String, Client>, room
             for cid in clients_to_notify {
                 if let Some(c) = clients.get(&cid) {
                     // Use try_send for bounded channel (non-blocking)
-                    let _ = c.sender.try_send(Ok(warp::ws::Message::text(msg_json.clone())));
+                    let _ = c
+                        .sender
+                        .try_send(Ok(warp::ws::Message::text(msg_json.clone())));
                 }
             }
         }

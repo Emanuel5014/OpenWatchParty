@@ -5,17 +5,17 @@ mod types;
 mod utils;
 mod ws;
 
-use std::sync::Arc;
-use std::time::Duration;
-use log::{info, warn};
-use warp::Filter;
 use crate::auth::JwtConfig;
 use crate::types::{Clients, Rooms};
 use crate::utils::now_ms;
+use log::{info, warn};
+use std::sync::Arc;
+use std::time::Duration;
+use warp::Filter;
 
 // Zombie connection detection
 const ZOMBIE_CHECK_INTERVAL_SECS: u64 = 30;
-const ZOMBIE_TIMEOUT_MS: u64 = 60_000;  // 60 seconds without message = zombie
+const ZOMBIE_TIMEOUT_MS: u64 = 60_000; // 60 seconds without message = zombie
 
 fn get_allowed_origins() -> Vec<String> {
     std::env::var("ALLOWED_ORIGINS")
@@ -39,16 +39,21 @@ fn is_origin_allowed(origin: &str, allowed: &Arc<Vec<String>>) -> bool {
 #[tokio::main]
 async fn main() {
     // Initialize logger with default level INFO (can override with RUST_LOG env var)
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info")
-    ).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let jwt_config = Arc::new(JwtConfig::from_env());
     // P-RS10 fix: Wrap in Arc to avoid cloning on each request
     let allowed_origins = Arc::new(get_allowed_origins());
 
     info!("Allowed origins: {:?}", allowed_origins);
-    info!("JWT authentication: {}", if jwt_config.enabled { "ENABLED" } else { "DISABLED" });
+    info!(
+        "JWT authentication: {}",
+        if jwt_config.enabled {
+            "ENABLED"
+        } else {
+            "DISABLED"
+        }
+    );
 
     let clients: Clients = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
     let rooms: Rooms = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
@@ -98,16 +103,18 @@ async fn main() {
     // Origin validation filter
     let origin_check = warp::header::optional::<String>("origin")
         .and(allowed_origins_filter.clone())
-        .and_then(|origin: Option<String>, allowed: Arc<Vec<String>>| async move {
-            match origin {
-                Some(ref o) if is_origin_allowed(o, &allowed) => Ok(()),
-                Some(o) => {
-                    warn!("Rejected connection from origin: {}", o);
-                    Err(warp::reject::custom(OriginRejected))
+        .and_then(
+            |origin: Option<String>, allowed: Arc<Vec<String>>| async move {
+                match origin {
+                    Some(ref o) if is_origin_allowed(o, &allowed) => Ok(()),
+                    Some(o) => {
+                        warn!("Rejected connection from origin: {}", o);
+                        Err(warp::reject::custom(OriginRejected))
+                    }
+                    None => Ok(()), // Allow connections without Origin header (non-browser clients)
                 }
-                None => Ok(()), // Allow connections without Origin header (non-browser clients)
-            }
-        })
+            },
+        )
         .untuple_one();
 
     // WebSocket route with Origin validation (auth via message after connection)
@@ -117,13 +124,22 @@ async fn main() {
         .and(clients_filter)
         .and(rooms_filter)
         .and(jwt_filter.clone())
-        .map(|ws: warp::ws::Ws, clients, rooms, jwt_config: Arc<JwtConfig>| {
-            ws.on_upgrade(move |socket| ws::client_connection(socket, clients, rooms, jwt_config))
-        });
+        .map(
+            |ws: warp::ws::Ws, clients, rooms, jwt_config: Arc<JwtConfig>| {
+                ws.on_upgrade(move |socket| {
+                    ws::client_connection(socket, clients, rooms, jwt_config)
+                })
+            },
+        );
 
     // Health check endpoint with CORS
     let cors = warp::cors()
-        .allow_origins(allowed_origins.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+        .allow_origins(
+            allowed_origins
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>(),
+        )
         .allow_methods(vec!["GET"])
         .allow_headers(vec!["content-type"]);
 
@@ -148,8 +164,10 @@ async fn main() {
         #[cfg(unix)]
         {
             use tokio::signal::unix::{signal, SignalKind};
-            let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
-            let mut sigint = signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
+            let mut sigterm =
+                signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+            let mut sigint =
+                signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
             tokio::select! {
                 _ = sigterm.recv() => info!("Received SIGTERM, initiating graceful shutdown..."),
                 _ = sigint.recv() => info!("Received SIGINT, initiating graceful shutdown..."),
@@ -157,15 +175,17 @@ async fn main() {
         }
         #[cfg(not(unix))]
         {
-            tokio::signal::ctrl_c().await.expect("Failed to listen for Ctrl+C");
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to listen for Ctrl+C");
             info!("Received Ctrl+C, initiating graceful shutdown...");
         }
         let _ = tx.send(());
     });
 
     info!("OpenWatchParty server listening on 0.0.0.0:3000");
-    let (_, server) = warp::serve(routes)
-        .bind_with_graceful_shutdown(([0, 0, 0, 0], 3000), async {
+    let (_, server) =
+        warp::serve(routes).bind_with_graceful_shutdown(([0, 0, 0, 0], 3000), async {
             rx.await.ok();
         });
 

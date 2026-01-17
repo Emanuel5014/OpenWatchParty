@@ -64,31 +64,54 @@ pub fn send_to_client(client_id: &str, clients: &HashMap<String, Client>, msg: &
             Ok(json) => {
                 // Use try_send to avoid blocking on full buffer (bounded channel)
                 if let Err(e) = client.sender.try_send(Ok(warp::ws::Message::text(json))) {
-                    log::warn!("Failed to send to client {} (buffer full or closed): {}", client_id, e);
+                    log::warn!(
+                        "Failed to send to client {} (buffer full or closed): {}",
+                        client_id,
+                        e
+                    );
                 }
             }
             Err(e) => {
-                log::error!("Failed to serialize message for client {}: {}", client_id, e);
+                log::error!(
+                    "Failed to serialize message for client {}: {}",
+                    client_id,
+                    e
+                );
             }
         }
     }
 }
 
-pub fn broadcast_to_room(room: &Room, clients: &HashMap<String, Client>, msg: &WsMessage, exclude: Option<&str>) {
+pub fn broadcast_to_room(
+    room: &Room,
+    clients: &HashMap<String, Client>,
+    msg: &WsMessage,
+    exclude: Option<&str>,
+) {
     let json = match serde_json::to_string(msg) {
         Ok(j) => j,
         Err(e) => {
-            log::error!("Failed to serialize broadcast message for room {}: {}", room.room_id, e);
+            log::error!(
+                "Failed to serialize broadcast message for room {}: {}",
+                room.room_id,
+                e
+            );
             return;
         }
     };
     let warp_msg = warp::ws::Message::text(json);
     for client_id in &room.clients {
-        if Some(client_id.as_str()) == exclude { continue; }
+        if Some(client_id.as_str()) == exclude {
+            continue;
+        }
         if let Some(client) = clients.get(client_id) {
             // Use try_send to avoid blocking on full buffer (bounded channel)
             if let Err(e) = client.sender.try_send(Ok(warp_msg.clone())) {
-                log::warn!("Failed to broadcast to client {} (buffer full or closed): {}", client_id, e);
+                log::warn!(
+                    "Failed to broadcast to client {} (buffer full or closed): {}",
+                    client_id,
+                    e
+                );
             }
         }
     }
