@@ -94,8 +94,41 @@ As a participant:
 ### In-Room View
 - **Room name** - Current watch party name
 - **Participants** - Number of people watching
+- **Sync indicator** - Shows sync status (participants only)
+- **Chat** - Text messaging with other participants
 - **RTT** - Round-trip time to server (latency indicator)
 - **Leave button** - Exit the watch party
+
+## Using Chat
+
+The chat feature allows you to communicate with other watch party participants in real-time.
+
+### Sending Messages
+1. Type your message in the chat input field
+2. Press **Enter** or click **Send**
+3. Your message appears for all participants
+
+### Chat Features
+- **Username display** - Messages show the sender's Jellyfin username
+- **Timestamps** - Each message shows when it was sent
+- **Unread badge** - A red badge appears when new messages arrive while the panel is closed
+- **Message limit** - Messages are limited to 500 characters
+
+### Notes
+- Chat history is not saved; late joiners won't see previous messages
+- The chat input doesn't interfere with video player controls
+
+## Sync Indicator
+
+Participants see a sync status indicator that shows how well their playback is aligned with the host.
+
+| Status | Indicator | Meaning |
+|--------|-----------|---------|
+| In sync | Green dot | Your playback matches the host |
+| Out of sync | Yellow pulsing dot | Catching up via playback speed adjustment |
+| Waiting for sync | Spinner | Synchronized play is being scheduled |
+
+The "Out of sync" state is normal for a few seconds after joining or after the host seeks. The system automatically adjusts your playback speed to catch up.
 
 ## Tips for Best Experience
 

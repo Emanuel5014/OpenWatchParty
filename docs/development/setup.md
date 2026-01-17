@@ -105,21 +105,58 @@ OpenWatchParty/
 
 ## Make Commands
 
+Run `make help` for a full list. Key commands:
+
+### Development
 | Command | Description |
 |---------|-------------|
 | `make up` | Start full development environment |
 | `make down` | Stop all services |
-| `make build` | Build all components |
-| `make build-plugin` | Build Jellyfin plugin only |
-| `make build-server` | Build session server only |
-| `make logs` | View logs from all services |
-| `make logs-server` | View session server logs |
+| `make dev` | Start stack and follow logs |
 | `make restart` | Restart all services |
-| `make clean` | Clean build artifacts |
+| `make restart-jellyfin` | Restart Jellyfin only (after JS changes) |
+| `make restart-server` | Rebuild and restart session server |
+| `make watch` | Watch JS files and auto-restart on change |
+| `make shell-jellyfin` | Open shell in Jellyfin container |
+| `make shell-server` | Open shell in session server container |
+
+### Build
+| Command | Description |
+|---------|-------------|
+| `make build` | Build the Jellyfin plugin |
+| `make build-server` | Build the session server locally (Rust) |
+| `make build-server-docker` | Rebuild session server Docker image |
+| `make build-all` | Build everything (plugin + server image) |
+| `make rebuild` | Clean and rebuild everything |
+| `make release` | Build release artifacts (zip) |
+
+### Observability
+| Command | Description |
+|---------|-------------|
+| `make logs` | Follow logs from all services |
+| `make logs-server` | Follow session server logs only |
+| `make logs-jellyfin` | Follow Jellyfin logs only |
+| `make status` | Show service status with health info |
+| `make health` | Check health of all services |
+
+### Testing & Quality
+| Command | Description |
+|---------|-------------|
+| `make test` | Run all tests |
+| `make lint` | Run all linters (Rust + JS) |
+| `make fmt` | Format all code |
+| `make check` | Run cargo check (fast compile check) |
+| `make pre-commit` | Run all pre-commit hooks |
 | `make setup` | Install pre-commit hooks |
-| `make pre-commit` | Run all pre-commit checks manually |
-| `make lint` | Run linters (clippy, eslint) |
-| `make fmt` | Format Rust code |
+
+### Cleanup
+| Command | Description |
+|---------|-------------|
+| `make clean` | Clean all build artifacts |
+| `make clean-docker` | Remove Docker images and volumes |
+| `make reset` | Full reset (containers + artifacts) |
+
+**Quick aliases:** `u`=up, `d`=down, `r`=restart, `l`=logs, `s`=status, `b`=build
 
 ## Pre-commit Hooks
 
@@ -183,57 +220,43 @@ If a hook fails:
 ### JavaScript Client
 
 1. **Edit files** in `clients/jellyfin-web/`
-2. **Rebuild plugin** (copies JS to plugin directory):
+2. **Restart Jellyfin** (automatically copies JS files):
    ```bash
-   make build-plugin
+   make restart-jellyfin
    ```
-3. **Restart Jellyfin**:
-   ```bash
-   docker compose -f infra/docker/docker-compose.yml restart jellyfin-dev
-   ```
-4. **Hard refresh browser** (Ctrl+F5)
+3. **Hard refresh browser** (Ctrl+F5)
+
+**Tip:** Use `make watch` to automatically restart Jellyfin when JS files change.
 
 ### Rust Session Server
 
 1. **Edit files** in `server/src/`
-2. **Restart server**:
+2. **Restart server** (rebuilds automatically):
    ```bash
-   docker compose -f infra/docker/docker-compose.yml restart session-server
-   ```
-3. Or rebuild completely:
-   ```bash
-   make build-server
-   make up
+   make restart-server
    ```
 
 ### C# Plugin
 
 1. **Edit files** in `plugins/jellyfin/OpenWatchParty/`
-2. **Build**:
+2. **Build and restart**:
    ```bash
-   make build-plugin
-   ```
-3. **Restart Jellyfin**:
-   ```bash
-   docker compose -f infra/docker/docker-compose.yml restart jellyfin-dev
+   make build && make restart-jellyfin
    ```
 
 ## Hot Reload
 
 ### JavaScript
 
-The client script is served from the plugin. After changes:
-1. Run `make build-plugin`
-2. Restart Jellyfin
-3. Hard refresh browser
-
-**Tip:** During development, you can temporarily serve the script from a local web server and modify the script tag URL for faster iteration.
+Use `make watch` for automatic reload on JS file changes. Otherwise:
+1. Run `make restart-jellyfin`
+2. Hard refresh browser (Ctrl+F5)
 
 ### Rust
 
 The session server needs restart after changes:
 ```bash
-docker compose -f infra/docker/docker-compose.yml restart session-server
+make restart-server
 ```
 
 For faster iteration, run locally:
@@ -244,7 +267,10 @@ cargo watch -x run
 
 ### C# Plugin
 
-Requires rebuilding and restarting Jellyfin.
+Requires rebuilding and restarting Jellyfin:
+```bash
+make build && make restart-jellyfin
+```
 
 ## Debugging
 
@@ -361,6 +387,17 @@ dotnet build
 ## Build Optimization (Rust)
 
 The Rust server has optimized build configuration for faster development cycles.
+
+### Docker Build Modes
+
+The Dockerfile supports a `BUILD_MODE` argument:
+
+| Mode | Usage | Optimization |
+|------|-------|--------------|
+| `dev` | Local development (`docker-compose.yml`) | Fast builds, debug symbols |
+| `release` | CI/CD and production | Full optimization, smaller binary |
+
+Development builds use `BUILD_MODE=dev` by default. CI releases use `BUILD_MODE=release`.
 
 ### Mold Linker (Recommended)
 

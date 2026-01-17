@@ -398,10 +398,17 @@ A participant left the room.
   "type": "client_left",
   "room": "uuid-room-id",
   "client": "uuid-left-client-id",
+  "payload": {
+    "participant_count": 2
+  },
   "ts": 1678900000000,
   "server_ts": 1678900000000
 }
 ```
+
+| Payload Field | Type | Description |
+|---------------|------|-------------|
+| `participant_count` | number | Updated participant count after the client left |
 
 ### `pong`
 
