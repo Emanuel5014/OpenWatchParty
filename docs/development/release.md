@@ -136,15 +136,23 @@ git push origin v0.2.0
 
 ### 7. Create GitHub Release
 
+Using the GitHub CLI (recommended):
+
+```bash
+gh release create v0.2.0 --title "v0.2.0" --notes-file CHANGELOG.md
+```
+
+Or via GitHub UI:
+
 1. Go to GitHub > Releases > New Release
 2. Select tag `v0.2.0`
 3. Title: `v0.2.0`
 4. Description: Copy from CHANGELOG
-5. Attach binaries:
-   - `OpenWatchParty.dll`
-   - `session-server` (Linux binary)
-   - `session-server.exe` (Windows binary, if available)
-6. Publish release
+5. Click **Publish release**
+
+The workflow will automatically:
+- Build and push Docker images to GHCR
+- Build and attach the Jellyfin plugin zip
 
 ### 8. Merge to Main
 
@@ -162,34 +170,54 @@ git branch -d release/v0.2.0
 
 ## Docker Images
 
-### Build Images
+Docker images are automatically built and pushed to GitHub Container Registry (GHCR).
+
+### Available Tags
+
+| Tag | Description | Updated |
+|-----|-------------|---------|
+| `latest` | Latest stable release | On release |
+| `vX.Y.Z` | Specific version (e.g., `v0.1.0`) | On release |
+| `vX.Y` | Minor version (e.g., `v0.1`) | On release |
+| `beta` | Latest development build | On push to main |
+
+### Pull Images
 
 ```bash
-# Session server
-docker build -t openwatchparty-session-server:0.2.0 ./server
+# Latest stable
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:latest
 
-# Tag as latest
-docker tag openwatchparty-session-server:0.2.0 openwatchparty-session-server:latest
+# Specific version
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:v0.1.0
+
+# Development
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:beta
 ```
 
-### Push to Registry (if using)
+### Build Locally (optional)
 
 ```bash
-docker push registry.example.com/openwatchparty-session-server:0.2.0
-docker push registry.example.com/openwatchparty-session-server:latest
+docker build -t openwatchparty-session-server:local ./server
 ```
 
 ## Automated Releases
 
-Releases are automated via GitHub Actions (`.github/workflows/docker-publish.yml`).
+Releases are fully automated via GitHub Actions (`.github/workflows/docker-publish.yml`).
 
 ### What Happens on Release
 
 When you create a GitHub Release:
 
-1. **Docker Image**: Built and pushed to GHCR (`ghcr.io/mhbxyz/openwatchparty-session-server`)
+1. **Docker Image**: Built for amd64 and arm64, pushed to GHCR with version + `latest` tags
 2. **Jellyfin Plugin**: Built, zipped, and attached to the release
 3. **Plugin Repository**: `manifest.json` updated with new version and deployed to GitHub Pages
+
+### What Happens on Push to Main
+
+When server code changes (`server/**`) are pushed to `main`:
+
+1. **Docker Image**: Built and pushed with `beta` tag
+2. Allows testers to always have the latest development version
 
 ### Plugin Distribution
 

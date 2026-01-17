@@ -49,6 +49,38 @@ Runs on every push/PR and weekly (Monday 00:00 UTC).
 
 Results are uploaded to the GitHub Security tab.
 
+### Docker Publish Workflow (`docker-publish.yml`)
+
+Handles Docker image publishing to GHCR and release artifacts.
+
+#### Triggers
+
+| Event | Condition | Tags Generated |
+|-------|-----------|----------------|
+| Push to `main` | Changes in `server/**` | `beta` |
+| GitHub Release | Published | `vX.Y.Z`, `vX.Y`, `latest` |
+
+#### Jobs
+
+| Job | Trigger | Description |
+|-----|---------|-------------|
+| **Build & Push Docker Image** | All | Builds multi-platform image (amd64, arm64) and pushes to GHCR |
+| **Build Jellyfin Plugin** | Release only | Builds plugin and creates zip archive |
+| **Upload Release Assets** | Release only | Attaches plugin zip to GitHub Release |
+
+#### Docker Image
+
+```bash
+# Latest stable release
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:latest
+
+# Specific version
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:v0.1.0
+
+# Development (latest from main)
+docker pull ghcr.io/mhbxyz/openwatchparty-session-server:beta
+```
+
 ## Pre-commit Hooks
 
 Local hooks mirror CI checks to catch issues before push.
