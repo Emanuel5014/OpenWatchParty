@@ -1,16 +1,18 @@
-FROM rust:1.83 AS builder
+FROM rust:1.83-alpine AS builder
+
+# Install musl-dev for static linking
+RUN apk add --no-cache musl-dev
+
 WORKDIR /usr/src/app
 COPY . .
 RUN cargo install --path .
 
-FROM debian:bookworm-slim
+FROM alpine:3.21
 
 # Install curl for healthcheck and ca-certificates for HTTPS
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl && \
-    rm -rf /var/lib/apt/lists/* && \
+RUN apk add --no-cache ca-certificates curl && \
     # Create non-root user for security
-    useradd -m -u 1000 -s /bin/bash appuser
+    adduser -D -u 1000 appuser
 
 COPY --from=builder /usr/local/cargo/bin/session-server /usr/local/bin/session-server
 RUN chown appuser:appuser /usr/local/bin/session-server
