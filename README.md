@@ -44,14 +44,60 @@ OpenWatchParty enables synchronized media playback for [Jellyfin](https://jellyf
 | 🎨 **Native UI** | Integrated into Jellyfin's web interface |
 | 🌐 **HLS Support** | Works with Jellyfin's adaptive streaming |
 
-## Quick Start
+## Installation
 
-### Prerequisites
+### For Users
+
+Install OpenWatchParty on your existing Jellyfin server in minutes.
+
+#### 1. Deploy the Session Server
+
+```bash
+docker run -d --name owp-session -p 3000:3000 \
+  -e ALLOWED_ORIGINS="http://your-jellyfin:8096" \
+  ghcr.io/mhbxyz/openwatchparty-session-server:latest
+```
+
+#### 2. Install the Plugin
+
+1. Go to **Dashboard** → **Plugins** → **Repositories**
+2. Add repository:
+   ```
+   https://mhbxyz.github.io/OpenWatchParty/jellyfin-plugin-repo/manifest.json
+   ```
+3. Go to **Catalog** → Find **OpenWatchParty** → **Install**
+4. Restart Jellyfin
+
+#### 3. Enable the Client Script
+
+1. Go to **Dashboard** → **General** → **Custom HTML**
+2. Add:
+   ```html
+   <script src="/web/plugins/openwatchparty/plugin.js"></script>
+   ```
+3. Click **Save** and hard refresh (`Ctrl+F5`)
+
+#### 4. Start Watching Together
+
+1. Play any video in Jellyfin
+2. Click the **Watch Party button** (group icon in the header)
+3. **Create a room** and share the name with friends
+4. Friends join your room — when you play, pause, or seek, everyone follows along
+
+> See the [Installation Guide](https://mhbxyz.github.io/OpenWatchParty/operations/installation.html) for detailed instructions and configuration options.
+
+---
+
+### For Developers
+
+Set up a complete development environment with hot reload.
+
+#### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- Jellyfin server 10.9+
+- Git
 
-### 1. Clone and Start
+#### 1. Clone and Start
 
 ```bash
 git clone https://github.com/mhbxyz/OpenWatchParty.git
@@ -61,25 +107,20 @@ make up
 
 This builds the plugin and starts both Jellyfin (`localhost:8096`) and the session server (`localhost:3000`).
 
-### 2. Enable the Client Script
+#### 2. Enable the Client Script
 
-1. Go to **Dashboard** → **General** → **Custom HTML**
-2. Add:
-   ```html
-   <script src="/web/plugins/openwatchparty/plugin.js"></script>
-   ```
-3. Click **Save** and hard refresh (`Ctrl+F5`)
+Follow step 3 from the user installation above.
 
-### 3. Start Watching Together
+#### 3. Development Commands
 
-1. Play any video in Jellyfin
-2. Click the **Watch Party button** (group icon in the header)
-3. **Create a room** and share the name with friends
-4. Friends click the same button and **join your room**
+```bash
+make dev      # Start stack and follow logs
+make watch    # Auto-restart on JS file changes
+make test     # Run tests
+make lint     # Run linters
+```
 
-When you play, pause, or seek — everyone follows along.
-
-> **Note:** For production deployment or manual installation, see the [Installation Guide](https://mhbxyz.github.io/OpenWatchParty/operations/installation.html).
+> See the [Development Setup Guide](https://mhbxyz.github.io/OpenWatchParty/development/setup.html) for the full development workflow.
 
 ## Architecture
 
