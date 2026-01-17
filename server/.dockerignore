@@ -28,3 +28,4 @@ benches/
 .env
 .env.*
 *.log
+.cargo/
