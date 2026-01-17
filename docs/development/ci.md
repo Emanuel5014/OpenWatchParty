@@ -67,6 +67,19 @@ Handles Docker image publishing to GHCR and release artifacts.
 | **Build & Push Docker Image** | All | Builds multi-platform image (amd64, arm64) and pushes to GHCR |
 | **Build Jellyfin Plugin** | Release only | Builds plugin and creates zip archive |
 | **Upload Release Assets** | Release only | Attaches plugin zip to GitHub Release |
+| **Update Plugin Manifest** | Release only | Updates `manifest.json` for Jellyfin plugin repository |
+
+#### Plugin Repository
+
+On release, the workflow automatically updates the [Jellyfin plugin repository](https://mhbxyz.github.io/OpenWatchParty/jellyfin-plugin-repo/manifest.json):
+
+1. Downloads the built plugin zip
+2. Calculates MD5 checksum
+3. Updates `docs/jellyfin-plugin-repo/manifest.json` with new version
+4. Commits and pushes to `main`
+5. Triggers GitHub Pages deployment
+
+Users can then install/update the plugin directly from Jellyfin's plugin interface.
 
 #### Docker Image
 

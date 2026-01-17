@@ -108,24 +108,43 @@ cargo build --release
 
 ### Jellyfin Plugin
 
+#### Option A: Via Jellyfin Plugin Repository (Recommended)
+
+Install directly from Jellyfin's plugin interface:
+
+1. Go to **Dashboard** > **Plugins** > **Repositories**
+2. Click **Add** and enter:
+   ```
+   https://mhbxyz.github.io/OpenWatchParty/jellyfin-plugin-repo/manifest.json
+   ```
+3. Go to **Catalog** tab
+4. Find **OpenWatchParty** and click **Install**
+5. Restart Jellyfin
+6. Enable the client script (see Quick Start step 3)
+
+This method provides automatic update notifications when new versions are released.
+
+#### Option B: Manual Download
+
 1. **Download the Plugin**
 
    Get the latest release from the [releases page](https://github.com/mhbxyz/OpenWatchParty/releases):
-   - `OpenWatchParty.dll`
+   - `OpenWatchParty-vX.Y.Z.zip`
 
 2. **Install to Jellyfin**
 
-   Copy the DLL to your Jellyfin plugins directory:
+   Extract the zip to your Jellyfin plugins directory:
 
    ```bash
    # Linux (Docker)
-   docker cp OpenWatchParty.dll jellyfin:/config/plugins/OpenWatchParty/
+   unzip OpenWatchParty-v0.1.0.zip -d /tmp/owp
+   docker cp /tmp/owp/. jellyfin:/config/plugins/OpenWatchParty/
 
    # Linux (native)
-   sudo cp OpenWatchParty.dll /var/lib/jellyfin/plugins/OpenWatchParty/
+   sudo unzip OpenWatchParty-v0.1.0.zip -d /var/lib/jellyfin/plugins/OpenWatchParty/
 
    # Windows
-   copy OpenWatchParty.dll "C:\ProgramData\Jellyfin\Server\plugins\OpenWatchParty\"
+   # Extract to: C:\ProgramData\Jellyfin\Server\plugins\OpenWatchParty\
    ```
 
 3. **Restart Jellyfin**
