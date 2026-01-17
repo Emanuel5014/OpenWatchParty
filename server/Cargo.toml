@@ -3,6 +3,13 @@ name = "session-server"
 version = "0.1.0"
 edition = "2021"
 
+# Release profile: optimized for production
+[profile.release]
+lto = false            # Disable LTO for faster compilation
+codegen-units = 16     # More parallel codegen units = faster compile
+opt-level = 3          # Full optimization for runtime performance
+strip = true           # Strip symbols for smaller binary
+
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
 tokio-stream = "0.1"
