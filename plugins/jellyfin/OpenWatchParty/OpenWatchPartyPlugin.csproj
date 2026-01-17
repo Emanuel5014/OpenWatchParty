@@ -4,8 +4,6 @@
     <RootNamespace>OpenWatchParty.Plugin</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseLocalJellyfinRefs Condition="Exists('refs/MediaBrowser.Common.dll')">true</UseLocalJellyfinRefs>
-    <!-- Plugin version info (fixes L17) -->
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
@@ -19,27 +17,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(UseLocalJellyfinRefs)' != 'true'">
+  <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="10.11.5" />
     <PackageReference Include="Jellyfin.Model" Version="10.11.5" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(UseLocalJellyfinRefs)' == 'true'">
-    <Reference Include="MediaBrowser.Controller">
-      <HintPath>refs/MediaBrowser.Controller.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Common">
-      <HintPath>refs/MediaBrowser.Common.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="MediaBrowser.Model">
-      <HintPath>refs/MediaBrowser.Model.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.35.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.35.0" />
   </ItemGroup>

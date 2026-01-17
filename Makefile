@@ -74,7 +74,6 @@ help: ## Show this help
 	@echo "  $(GREEN)build-server-docker$(RESET) Rebuild session server Docker image"
 	@echo "  $(GREEN)build-all$(RESET)          Build everything (plugin + server image)"
 	@echo "  $(GREEN)rebuild$(RESET)            Clean and rebuild everything"
-	@echo "  $(GREEN)sync-refs$(RESET)          Sync Jellyfin DLL references from container"
 	@echo "  $(GREEN)release$(RESET)            Build release artifacts (zip)"
 	@echo ""
 	@echo "$(BOLD)$(CYAN)Observability:$(RESET)"
@@ -164,13 +163,13 @@ shell-server: ## Open shell in session server container
 # ----------------------------------------------------------------------------
 # Build
 # ----------------------------------------------------------------------------
-.PHONY: build build-plugin build-server build-all sync-refs start-deps
+.PHONY: build build-plugin build-server build-all
 
 build: build-plugin ## Build the Jellyfin plugin (alias for build-plugin)
 
-build-plugin: start-deps sync-refs ## Build the Jellyfin plugin
+build-plugin: ## Build the Jellyfin plugin
 	@echo "$(GREEN)▶ Building Jellyfin plugin...$(RESET)"
-	@mkdir -p $(PLUGIN_DIR)/Web
+	@mkdir -p $(PLUGIN_DIR)/Web $(PLUGIN_DIR)/dist $(PLUGIN_DIR)/obj $(PLUGIN_DIR)/bin
 	@cp $(CLIENT_DIR)/plugin.js $(PLUGIN_DIR)/Web/plugin.js
 	@cp $(CLIENT_DIR)/state.js $(CLIENT_DIR)/utils.js $(CLIENT_DIR)/ui.js $(CLIENT_DIR)/playback.js $(CLIENT_DIR)/ws.js $(CLIENT_DIR)/app.js $(PLUGIN_DIR)/Web/
 	@$(COMPOSE_TOOLS) run --rm plugin-builder
@@ -192,20 +191,6 @@ build-all: build-plugin build-server-docker ## Build everything (plugin + server
 rebuild: clean build-all ## Clean and rebuild everything
 	@$(COMPOSE) up -d --force-recreate
 	@echo "$(GREEN)✓ Stack rebuilt and restarted$(RESET)"
-
-sync-refs: ## Sync Jellyfin DLL references from container
-	@echo "$(CYAN)▶ Syncing Jellyfin DLLs...$(RESET)"
-	@./scripts/sync-jellyfin-refs.sh
-	@echo "$(GREEN)✓ DLLs synced$(RESET)"
-
-start-deps: ## Start dependencies needed for build
-	@# Create directories BEFORE Docker to ensure correct ownership
-	@mkdir -p $(PLUGIN_DIR)/dist $(PLUGIN_DIR)/obj $(PLUGIN_DIR)/bin
-	@if ! docker ps --format '{{.Names}}' | grep -q $(JELLYFIN_CTR); then \
-		echo "$(CYAN)▶ Starting dependencies...$(RESET)"; \
-		$(COMPOSE) up -d session-server jellyfin-dev; \
-		sleep 5; \
-	fi
 
 release: clean ## Build release artifacts
 	@echo "$(GREEN)▶ Building release...$(RESET)"
@@ -323,7 +308,6 @@ clean-plugin: ## Clean plugin build artifacts
 	@rm -rf $(PLUGIN_DIR)/dist $(PLUGIN_DIR)/bin $(PLUGIN_DIR)/obj 2>/dev/null || \
 		(echo "$(YELLOW)⚠ Some files owned by root, using sudo...$(RESET)" && \
 		 sudo rm -rf $(PLUGIN_DIR)/dist $(PLUGIN_DIR)/bin $(PLUGIN_DIR)/obj)
-	@rm -rf $(PLUGIN_DIR)/refs
 	@rm -f $(PLUGIN_DIR)/Web/plugin.js $(PLUGIN_DIR)/Web/owp-*.js
 
 fix-permissions: ## Fix ownership of Docker-created files

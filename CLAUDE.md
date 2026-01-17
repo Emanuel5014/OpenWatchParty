@@ -31,7 +31,6 @@ make watch           # Auto-restart on JS file changes
 # Build
 make build           # Build Jellyfin plugin only
 make build-server    # Build Rust server locally
-make sync-refs       # Sync Jellyfin DLLs from container (required before plugin build)
 
 # Testing & Quality
 make test            # Run Rust tests
