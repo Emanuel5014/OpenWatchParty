@@ -133,6 +133,12 @@
         console.log('[OpenWatchParty] Quality settings:', state.quality);
       }
 
+      // Store custom session server URL if configured (reverse proxy support)
+      if (data.session_server_url) {
+        state.sessionServerUrl = data.session_server_url;
+        console.log('[OpenWatchParty] Using custom session server URL:', state.sessionServerUrl);
+      }
+
       if (data.auth_enabled && data.token) {
         state.authToken = data.token;
         // Track token expiry and schedule refresh (refresh 5 min before expiry)
@@ -217,7 +223,8 @@
     }
 
     // Connect without token in URL (security: avoid token in logs/history)
-    const wsUrl = DEFAULT_WS_URL;
+    // Use custom session server URL if configured (reverse proxy support)
+    const wsUrl = state.sessionServerUrl || DEFAULT_WS_URL;
     console.log('[OpenWatchParty] Connecting to WebSocket:', wsUrl);
 
     // Security warning for non-secure WebSocket
@@ -360,7 +367,7 @@
             state.lastSyncPosition = targetPos;
           }
           if (hostPlaying) {
-            video.play().catch(() => {});
+            video.play().catch(() => { });
           } else if (msg.payload.state.play_state === 'paused') {
             video.pause();
           }
@@ -459,12 +466,12 @@
                 state.syncStatus = 'syncing';
                 state.pendingPlayUntil = 0;
                 if (ui.updateSyncIndicator) ui.updateSyncIndicator();
-                video.play().catch(() => {});
+                video.play().catch(() => { });
               });
             } else {
               state.syncStatus = 'syncing';
               if (ui.updateSyncIndicator) ui.updateSyncIndicator();
-              video.play().catch(() => {});
+              video.play().catch(() => { });
             }
             ui.showToast('Host resumed playback');
 
@@ -488,7 +495,7 @@
             if (hostPlayState === 'playing') {
               // HOST is playing after seek - resume playback
               state.syncCooldownUntil = utils.nowMs() + 2000;  // Reduced from 5000ms (UX-P1)
-              video.play().catch(() => {});
+              video.play().catch(() => { });
             }
 
           } else if (msg.payload.action === 'buffering') {
@@ -509,7 +516,7 @@
         // Handle play/pause BEFORE buffering check - browser queues play() during buffering
         if (msg.payload.play_state === 'playing' && video.paused) {
           utils.startSyncing();
-          video.play().catch(() => {});
+          video.play().catch(() => { });
           // Establish sync baseline at CLIENT's current position when resuming
           // This prevents immediate HARD_SEEK after buffering - syncLoop will use
           // playback rate to catch up gradually.

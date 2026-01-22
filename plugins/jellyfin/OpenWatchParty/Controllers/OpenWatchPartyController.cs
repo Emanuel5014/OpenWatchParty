@@ -204,6 +204,7 @@ public class OpenWatchPartyController : ControllerBase
                 auth_enabled = false,
                 user_id = userId,
                 user_name = userName,
+                session_server_url = string.IsNullOrEmpty(config.SessionServerUrl) ? (string?)null : config.SessionServerUrl,
                 quality = qualitySettings
             });
         }
@@ -217,6 +218,7 @@ public class OpenWatchPartyController : ControllerBase
             expires_in = config.TokenTtlSeconds,
             user_id = userId,
             user_name = userName,
+            session_server_url = string.IsNullOrEmpty(config.SessionServerUrl) ? (string?)null : config.SessionServerUrl,
             quality = qualitySettings
         });
     }

@@ -70,17 +70,27 @@ docker run -d --name owp-session -p 3000:3000 \
 
 #### 3. Enable the Client Script
 
-1. Go to **Dashboard** → **General** → **Custom HTML**
-2. Add:
+1. Go to **Dashboard** → **General** → scroll to **Branding** section
+2. In the **Custom HTML body** field, add:
    ```html
-   <script src="/web/plugins/openwatchparty/plugin.js"></script>
+   <script src="/OpenWatchParty/ClientScript"></script>
    ```
 3. Click **Save** and hard refresh (`Ctrl+F5`)
 
-#### 4. Start Watching Together
+> **Tip:** You can also copy this script tag from the plugin's configuration page: **Dashboard** → **Plugins** → **OpenWatchParty**
+
+#### 4. Configure for Reverse Proxy (Optional)
+
+If your session server is behind a reverse proxy or on a different address:
+
+1. Go to **Dashboard** → **Plugins** → **OpenWatchParty**
+2. Set **Session Server URL** to your WebSocket endpoint (e.g., `wss://party.example.com/ws`)
+3. Click **Save**
+
+#### 5. Start Watching Together
 
 1. Play any video in Jellyfin
-2. Click the **Watch Party button** (group icon in the header)
+2. Click the **Watch Party button** (group icon in the player controls)
 3. **Create a room** and share the name with friends
 4. Friends join your room — when you play, pause, or seek, everyone follows along
 

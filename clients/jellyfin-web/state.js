@@ -76,6 +76,7 @@
 
   OWP.state = {
     ws: null,
+    sessionServerUrl: '', // Custom session server URL from plugin config (reverse proxy support)
     roomId: '',
     clientId: '',
     name: '',

@@ -442,7 +442,7 @@
               <button class="owp-btn" style="width:100%" id="owp-btn-create">Create Room</button>
             </div>
         </div>
-        <div class="owp-footer">Server: ${DEFAULT_WS_URL.replace(/^wss?:\/\//, '').replace('/ws', '')}</div>
+        <div class="owp-footer">Server: ${(state.sessionServerUrl || DEFAULT_WS_URL).replace(/^wss?:\/\//, '').replace('/ws', '')}</div>
       `;
       const btn = panel.querySelector('#owp-btn-create');
       if (btn) btn.onclick = () => OWP.actions && OWP.actions.createRoom && OWP.actions.createRoom();
